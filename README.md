@@ -3,7 +3,7 @@
 추가과제는 경기 시작 10분 전에 공개된다. 미리 코드를 못 짜오고, 현장에서 AI 툴이 차단된다.
 그래서 이 레포는 **문제 문구 → 디렉토리 → 복붙**으로 끝나게 만든 매니페스트·스크립트 모음이다.
 
-**급하면 여기부터:** [`FIELD-RUNBOOK.md`](FIELD-RUNBOOK.md) (현장 절차·자가채점·체크리스트) · [`WAIT-TIMES.md`](WAIT-TIMES.md) (착수 순서)
+**급하면 여기부터:** [`FIELD-RUNBOOK.md`](FIELD-RUNBOOK.md) (현장 절차·착수 순서·자가채점·체크리스트)
 
 ## 규약
 
@@ -58,12 +58,6 @@ export R=ap-northeast-2    # 해당 항목/모듈이 지정한 리전
 | 매니페스트로 AWS 리소스 생성, 커스텀 API | [`cncf/crossplane/`](recipes/cncf/crossplane/) |
 | SAML/OIDC SSO, AWS 콘솔 로그인 연동 | [`cncf/keycloak/`](recipes/cncf/keycloak/) |
 | Helm 설치·values 디버깅·rollback | [`cncf/helm/`](recipes/cncf/helm/) |
-
-### AWS 기반
-
-| 문구 키워드 | 위치 |
-|---|---|
-| VPC, 서브넷, NAT, Flow Log, VPC Endpoint | [`base/vpc-fast.md`](recipes/base/vpc-fast.md) |
 
 ## 아직 없음
 
