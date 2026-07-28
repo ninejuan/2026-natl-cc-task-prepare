@@ -1,0 +1,36 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: app-ing
+  namespace: app
+  annotations:
+    alb.ingress.kubernetes.io/load-balancer-name: skills-alb
+    alb.ingress.kubernetes.io/scheme: internet-facing        # internal 이면 CloudFront VPC Origin 용
+    alb.ingress.kubernetes.io/target-type: ip                # ip = 파드 직접. instance = NodePort 경유
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80}]'
+    alb.ingress.kubernetes.io/healthcheck-path: /health
+    alb.ingress.kubernetes.io/healthcheck-interval-seconds: '10'
+    alb.ingress.kubernetes.io/healthy-threshold-count: '2'
+    alb.ingress.kubernetes.io/target-group-attributes: deregistration_delay.timeout_seconds=15
+    alb.ingress.kubernetes.io/tags: Name=skills-alb
+    # 여러 Ingress 를 한 ALB 로 합칠 때
+    # alb.ingress.kubernetes.io/group.name: skills
+    # alb.ingress.kubernetes.io/group.order: '10'
+    # HTTPS 를 요구하면
+    # alb.ingress.kubernetes.io/listen-ports: '[{"HTTP":80},{"HTTPS":443}]'
+    # alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:ap-northeast-2:000000000000:certificate/xxx
+    # alb.ingress.kubernetes.io/ssl-redirect: '443'
+    # 서브넷 자동 탐색이 실패하면 직접 지정
+    # alb.ingress.kubernetes.io/subnets: subnet-aaa,subnet-bbb
+spec:
+  ingressClassName: alb
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: app-svc
+                port:
+                  number: 8080

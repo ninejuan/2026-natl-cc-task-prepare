@@ -1,0 +1,10 @@
+# VPC CNI 의 네트워크 폴리시 기능이 켜져 있어야 동작한다 (애드온 설정 enableNetworkPolicy=true).
+# 안 켜져 있으면 매니페스트는 받아들여지되 아무것도 차단되지 않는다.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny-ingress
+  namespace: app
+spec:
+  podSelector: {}
+  policyTypes: ["Ingress"]

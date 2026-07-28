@@ -1,0 +1,13 @@
+# aws-ebs-csi-driver 애드온 필요. WaitForFirstConsumer 가 아니면 파드와 볼륨의 AZ 가 어긋난다.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: ebs-gp3
+provisioner: ebs.csi.aws.com
+volumeBindingMode: WaitForFirstConsumer
+allowVolumeExpansion: true
+reclaimPolicy: Delete
+parameters:
+  type: gp3
+  encrypted: "true"
+  # kmsKeyId: arn:aws:kms:ap-northeast-2:000000000000:key/xxxx

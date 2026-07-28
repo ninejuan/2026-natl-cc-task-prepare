@@ -1,0 +1,12 @@
+# scheme, 인증서 등 ALB 고유 설정. Gateway 의 spec.infrastructure.parametersRef 가 이걸 가리킨다.
+apiVersion: gateway.k8s.aws/v1beta1
+kind: LoadBalancerConfiguration
+metadata:
+  name: alb-lb-config
+  namespace: app
+spec:
+  scheme: internet-facing
+  loadBalancerName: skills-gw-alb
+  # listenerConfigurations:
+  #   - protocolPort: HTTPS:443
+  #     defaultCertificate: arn:aws:acm:ap-northeast-2:000000000000:certificate/xxx

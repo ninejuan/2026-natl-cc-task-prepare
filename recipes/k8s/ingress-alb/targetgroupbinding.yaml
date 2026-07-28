@@ -1,0 +1,12 @@
+# ALB 를 테라폼으로 이미 만들었고 파드만 붙일 때. Ingress 를 쓰지 않는 경로.
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: app-tgb
+  namespace: app
+spec:
+  serviceRef:
+    name: app-svc
+    port: 8080
+  targetGroupARN: arn:aws:elasticloadbalancing:ap-northeast-2:000000000000:targetgroup/skills-tg/0000000000000000
+  targetType: ip

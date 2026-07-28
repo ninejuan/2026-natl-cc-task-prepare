@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: app
+data:
+  AWS_REGION: ap-northeast-2
+  TABLE_NAME: skills-table

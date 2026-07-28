@@ -1,0 +1,36 @@
+# 경로/헤더/메서드로 분기하는 라우팅. "GET 은 A, POST 는 B" 류 요구에 쓴다.
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: app-route-split
+  namespace: app
+spec:
+  parentRefs:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: app-gw
+      sectionName: http
+  rules:
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1/book
+          method: GET
+      backendRefs:
+        - name: query-svc
+          port: 8080
+    - matches:
+        - path:
+            type: PathPrefix
+            value: /v1/book
+          method: POST
+      backendRefs:
+        - name: app-svc
+          port: 8080
+    - matches:
+        - headers:
+            - name: x-canary
+              value: "true"
+      backendRefs:
+        - name: canary-svc
+          port: 8080

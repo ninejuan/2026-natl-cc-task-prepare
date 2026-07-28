@@ -1,0 +1,19 @@
+# 컨트롤러 설치 없이 되는 내장 기능 (1.30+ GA). Kyverno/Gatekeeper 보다 이걸 먼저 쓴다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: disallow-latest-tag
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  validations:
+    - expression: >-
+        object.spec.containers.all(c, c.image.contains(':') && !c.image.endsWith(':latest'))
+        && (!has(object.spec.initContainers) ||
+            object.spec.initContainers.all(c, c.image.contains(':') && !c.image.endsWith(':latest')))
+      message: "이미지에 명시적 태그가 있어야 하고 ':latest' 는 허용되지 않습니다"

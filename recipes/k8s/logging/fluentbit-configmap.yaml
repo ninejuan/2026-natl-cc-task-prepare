@@ -1,0 +1,84 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluent-bit-config
+  namespace: logging
+data:
+  # Flush 5 + cloudwatch_logs => 10초 내 전달 요구를 만족한다.
+  fluent-bit.conf: |
+    [SERVICE]
+        Flush             5
+        Grace             30
+        Log_Level         info
+        Daemon            off
+        Parsers_File      parsers.conf
+        HTTP_Server       On
+        HTTP_Listen       0.0.0.0
+        HTTP_Port         2020
+
+    [INPUT]
+        Name              tail
+        Tag               app.*
+        Path              /var/log/containers/app-*_app_*.log
+        Parser            cri
+        DB                /var/log/flb_app.db
+        Mem_Buf_Limit     10MB
+        Skip_Long_Lines   On
+        Refresh_Interval  5
+
+    [FILTER]
+        Name              kubernetes
+        Match             app.*
+        Kube_Tag_Prefix   app.var.log.containers.
+        Merge_Log         On
+        Merge_Log_Key     log_processed
+        Keep_Log          Off
+        K8S-Logging.Parser Off
+        K8S-Logging.Exclude Off
+
+    # 앱이 JSON 한 줄로 찍는 경우 필드로 펼친다
+    [FILTER]
+        Name              parser
+        Match             app.*
+        Key_Name          log
+        Parser            json_app
+        Reserve_Data      On
+
+    # /health 로그는 보내지 않는다
+    [FILTER]
+        Name              grep
+        Match             app.*
+        Exclude           path ^/health$
+
+    # 채점 대상 필드만 남긴다
+    [FILTER]
+        Name              record_modifier
+        Match             app.*
+        Whitelist_key     timestamp
+        Whitelist_key     method
+        Whitelist_key     path
+        Whitelist_key     status_code
+        Whitelist_key     client_ip
+
+    [OUTPUT]
+        Name              cloudwatch_logs
+        Match             app.*
+        region            ap-northeast-2
+        log_group_name    /skills/eks/app
+        log_stream_prefix fluentbit-
+        auto_create_group true
+
+  parsers.conf: |
+    [PARSER]
+        Name        cri
+        Format      regex
+        Regex       ^(?<time>[^ ]+) (?<stream>stdout|stderr) (?<logtag>[^ ]*) (?<log>.*)$
+        Time_Key    time
+        Time_Format %Y-%m-%dT%H:%M:%S.%L%z
+
+    [PARSER]
+        Name        json_app
+        Format      json
+        Time_Key    timestamp
+        Time_Format %Y-%m-%dT%H:%M:%SZ
+        Time_Keep   On

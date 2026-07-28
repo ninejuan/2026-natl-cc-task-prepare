@@ -1,0 +1,21 @@
+# "특정 label 이 없으면 Pod 생성 불가" 류 요구. 값까지 강제하려면 == 비교를 남긴다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: require-env-label
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+  variables:
+    - name: labels
+      expression: "has(object.metadata.labels) ? object.metadata.labels : {}"
+  validations:
+    - expression: "'skills.kr/env' in variables.labels"
+      message: "skills.kr/env label 이 필요합니다"
+    - expression: "variables.labels['skills.kr/env'] == 'prod'"
+      message: "skills.kr/env 값은 prod 여야 합니다"

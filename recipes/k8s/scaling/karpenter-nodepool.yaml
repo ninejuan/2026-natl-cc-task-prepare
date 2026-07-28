@@ -1,0 +1,34 @@
+# template.metadata.labels 는 채점이 kubectl get nodes -l 로 찾는 지점이다. 반드시 넣는다.
+apiVersion: karpenter.sh/v1
+kind: NodePool
+metadata:
+  name: skills-nodepool
+spec:
+  template:
+    metadata:
+      labels:
+        skills/nodepool: worker
+    spec:
+      nodeClassRef:
+        group: karpenter.k8s.aws
+        kind: EC2NodeClass
+        name: skills-nodeclass
+      requirements:
+        - key: kubernetes.io/arch
+          operator: In
+          values: ["amd64"]
+        - key: kubernetes.io/os
+          operator: In
+          values: ["linux"]
+        - key: karpenter.sh/capacity-type
+          operator: In
+          values: ["on-demand"]
+        - key: node.kubernetes.io/instance-type
+          operator: In
+          values: ["t3.small", "t3.medium", "t3.large"]
+      expireAfter: 720h
+  limits:
+    cpu: "20"
+  disruption:
+    consolidationPolicy: WhenEmptyOrUnderutilized
+    consolidateAfter: 1m

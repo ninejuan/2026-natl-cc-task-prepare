@@ -1,0 +1,13 @@
+# 바인딩이 없으면 정책은 아무것도 막지 않는다. namespaceSelector 로 적용 범위를 좁힌다.
+# 모든 네임스페이스에 걸려면 matchResources 를 통째로 지운다.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: disallow-latest-tag-binding
+spec:
+  policyName: disallow-latest-tag
+  validationActions: ["Deny"]
+  matchResources:
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: prod

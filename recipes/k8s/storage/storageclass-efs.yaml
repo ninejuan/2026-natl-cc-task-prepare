@@ -1,0 +1,13 @@
+# aws-efs-csi-driver 필요. EFS 마운트 타깃의 SG 가 노드 SG 로부터 2049/TCP 를 허용해야 한다.
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: efs-sc
+provisioner: efs.csi.aws.com
+reclaimPolicy: Delete
+parameters:
+  provisioningMode: efs-ap
+  fileSystemId: fs-00000000000000000
+  directoryPerms: "700"
+  basePath: /dynamic
+  ensureUniqueDirectory: "true"
