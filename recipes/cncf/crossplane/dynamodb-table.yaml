@@ -1,0 +1,21 @@
+apiVersion: dynamodb.aws.upbound.io/v1beta1
+kind: Table
+metadata:
+  name: skills-table
+  annotations:
+    crossplane.io/external-name: skills-crossplane-table
+spec:
+  deletionPolicy: Delete
+  forProvider:
+    region: ap-northeast-2
+    billingMode: PAY_PER_REQUEST
+    hashKey: booking_id
+    attribute:
+      - name: booking_id
+        type: S
+    pointInTimeRecovery:
+      - enabled: true
+    tags:
+      Name: skills-crossplane-table
+  providerConfigRef:
+    name: default

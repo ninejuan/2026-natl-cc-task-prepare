@@ -1,0 +1,11 @@
+# 개발자가 실제로 쓰는 최종 인터페이스. 이 한 파일로 S3 버킷 + DynamoDB 테이블이 생긴다.
+#   kubectl get appstorage -n app
+#   kubectl get managed
+apiVersion: skills.kr/v1alpha1
+kind: AppStorage
+metadata:
+  name: book
+  namespace: app
+spec:
+  appName: book
+  region: ap-northeast-2

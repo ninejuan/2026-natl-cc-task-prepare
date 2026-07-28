@@ -1,0 +1,12 @@
+# IRSA 로 인증한다. 액세스 키를 클러스터에 넣지 않는 방식이라 이걸 우선한다.
+#
+# Provider 파드의 SA 에 role-arn annotation 을 붙이려면 DeploymentRuntimeConfig 가 필요하다.
+# 아래 두 리소스를 순서대로 적용하고, Provider 의 spec.runtimeConfigRef 로 연결한다.
+#   (Provider 매니페스트에 추가:  spec.runtimeConfigRef: {name: aws-irsa})
+apiVersion: aws.upbound.io/v1beta1
+kind: ProviderConfig
+metadata:
+  name: default
+spec:
+  credentials:
+    source: IRSA

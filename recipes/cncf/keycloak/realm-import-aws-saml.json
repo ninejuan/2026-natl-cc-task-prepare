@@ -1,0 +1,98 @@
+{
+  "realm": "aws",
+  "enabled": true,
+  "displayName": "AWS SSO",
+  "clients": [
+    {
+      "clientId": "urn:amazon:webservices",
+      "name": "AWS Console",
+      "description": "AWS 는 이 clientId 를 SP Entity ID 로 기대한다. 바꾸면 안 된다.",
+      "enabled": true,
+      "protocol": "saml",
+      "publicClient": true,
+      "frontchannelLogout": true,
+      "redirectUris": ["https://signin.aws.amazon.com/saml"],
+      "baseUrl": "https://signin.aws.amazon.com/saml",
+      "attributes": {
+        "saml.assertion.signature": "true",
+        "saml.client.signature": "false",
+        "saml.authnstatement": "true",
+        "saml_name_id_format": "persistent",
+        "saml_force_name_id_format": "true",
+        "saml.signature.algorithm": "RSA_SHA256"
+      },
+      "protocolMappers": [
+        {
+          "name": "Session Role",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "https://aws.amazon.com/SAML/Attributes/Role",
+            "attribute.nameformat": "URI Reference",
+            "user.attribute": "Role",
+            "friendly.name": "Role",
+            "aggregate.attrs": "true",
+            "multivalued": "true"
+          }
+        },
+        {
+          "name": "Session Name",
+          "protocol": "saml",
+          "protocolMapper": "saml-user-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "https://aws.amazon.com/SAML/Attributes/RoleSessionName",
+            "attribute.nameformat": "URI Reference",
+            "user.attribute": "username",
+            "friendly.name": "RoleSessionName"
+          }
+        },
+        {
+          "name": "Session Duration",
+          "protocol": "saml",
+          "protocolMapper": "saml-hardcode-attribute-mapper",
+          "consentRequired": false,
+          "config": {
+            "attribute.name": "https://aws.amazon.com/SAML/Attributes/SessionDuration",
+            "attribute.nameformat": "URI Reference",
+            "attribute.value": "3600",
+            "friendly.name": "SessionDuration"
+          }
+        }
+      ]
+    }
+  ],
+  "users": [
+    {
+      "username": "admin000",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Admin",
+      "lastName": "User",
+      "credentials": [
+        { "type": "password", "value": "Skills!2026", "temporary": false }
+      ],
+      "attributes": {
+        "Role": [
+          "arn:aws:iam::000000000000:role/admin-access,arn:aws:iam::000000000000:saml-provider/keycloak"
+        ]
+      }
+    },
+    {
+      "username": "dev000",
+      "enabled": true,
+      "emailVerified": true,
+      "firstName": "Dev",
+      "lastName": "User",
+      "credentials": [
+        { "type": "password", "value": "Skills!2026", "temporary": false }
+      ],
+      "attributes": {
+        "Role": [
+          "arn:aws:iam::000000000000:role/poweruser-access,arn:aws:iam::000000000000:saml-provider/keycloak"
+        ]
+      }
+    }
+  ]
+}

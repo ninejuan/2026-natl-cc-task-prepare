@@ -1,0 +1,31 @@
+# "개발자가 한 줄로 요청하면 인프라 세트가 생성되도록" 요구의 1/3.
+# 이건 API 스키마만 정의한다. 실제 조립은 composition.yaml, 사용은 claim.yaml.
+apiVersion: apiextensions.crossplane.io/v1
+kind: CompositeResourceDefinition
+metadata:
+  name: xappstorages.skills.kr
+spec:
+  group: skills.kr
+  names:
+    kind: XAppStorage
+    plural: xappstorages
+  claimNames:
+    kind: AppStorage
+    plural: appstorages
+  versions:
+    - name: v1alpha1
+      served: true
+      referenceable: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              properties:
+                appName:
+                  type: string
+                region:
+                  type: string
+                  default: ap-northeast-2
+              required: [appName]

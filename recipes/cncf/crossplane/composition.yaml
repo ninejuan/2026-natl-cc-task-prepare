@@ -1,0 +1,48 @@
+# XRD 를 실제 AWS 리소스로 조립한다. appName 하나로 버킷 + 테이블이 함께 생긴다.
+apiVersion: apiextensions.crossplane.io/v1
+kind: Composition
+metadata:
+  name: appstorage-aws
+spec:
+  compositeTypeRef:
+    apiVersion: skills.kr/v1alpha1
+    kind: XAppStorage
+  resources:
+    - name: bucket
+      base:
+        apiVersion: s3.aws.upbound.io/v1beta1
+        kind: Bucket
+        spec:
+          forProvider:
+            region: ap-northeast-2
+      patches:
+        - fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.appName
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+            - type: string
+              string:
+                fmt: "skills-%s-bucket"
+
+    - name: table
+      base:
+        apiVersion: dynamodb.aws.upbound.io/v1beta1
+        kind: Table
+        spec:
+          forProvider:
+            region: ap-northeast-2
+            billingMode: PAY_PER_REQUEST
+            hashKey: id
+            attribute:
+              - name: id
+                type: S
+      patches:
+        - fromFieldPath: spec.region
+          toFieldPath: spec.forProvider.region
+        - fromFieldPath: spec.appName
+          toFieldPath: metadata.annotations[crossplane.io/external-name]
+          transforms:
+            - type: string
+              string:
+                fmt: "skills-%s-table"

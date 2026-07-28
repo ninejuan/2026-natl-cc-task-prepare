@@ -1,0 +1,8 @@
+# 서비스별로 따로 깐다. 전체 provider-aws 는 거대해서 설치가 오래 걸린다.
+# 이 Provider 가 provider-family-aws 를 함께 끌어온다 (인증 담당).
+apiVersion: pkg.crossplane.io/v1
+kind: Provider
+metadata:
+  name: provider-aws-s3
+spec:
+  package: xpkg.upbound.io/crossplane-contrib/provider-aws-s3:v1.21.1
