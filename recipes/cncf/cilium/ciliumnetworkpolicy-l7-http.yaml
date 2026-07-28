@@ -1,0 +1,29 @@
+# 표준 NetworkPolicy 로는 불가능한 영역. HTTP 메서드·경로 단위로 허용한다.
+# 차단 시 TCP 리셋이 아니라 HTTP 403 이 오는 게 L7 정책이 동작하는 증거다.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-l7
+  namespace: app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: app
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: frontend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+          # http 규칙은 반드시 toPorts 안에 둔다. 밖에 쓰면 무시된다.
+          rules:
+            http:
+              - method: GET
+                path: "/health"
+              - method: GET
+                path: "/v1/book.*"
+              - method: POST
+                path: "/v1/book"
+              # /admin 은 어떤 메서드로도 허용하지 않는다 (목록에 없으면 거부)

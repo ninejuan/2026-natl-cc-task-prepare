@@ -1,0 +1,26 @@
+# 네임스페이스 스코프가 아닌 클러스터 전역 정책. "클러스터 전체에 기본 차단" 요구에 쓴다.
+# kube-system 은 예외로 둬야 클러스터가 안 죽는다.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: default-deny-except-system
+spec:
+  endpointSelector:
+    matchExpressions:
+      - key: k8s:io.kubernetes.pod.namespace
+        operator: NotIn
+        values: ["kube-system", "kube-node-lease", "kube-public"]
+  ingress:
+    - fromEntities:
+        - cluster
+  egress:
+    - toEntities:
+        - cluster
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP

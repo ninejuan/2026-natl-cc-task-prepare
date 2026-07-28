@@ -1,0 +1,38 @@
+# 라벨 기반 L3/L4. 표준 NetworkPolicy 와 같은 일을 하지만 Cilium 문법.
+# 한 클러스터에서 두 종류를 섞으면 둘 다 적용(AND)되어 예상보다 많이 막힌다.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-frontend-and-dns
+  namespace: app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: app
+  ingress:
+    - fromEndpoints:
+        - matchLabels:
+            app: frontend
+      toPorts:
+        - ports:
+            - port: "8080"
+              protocol: TCP
+  egress:
+    # DNS 를 먼저 열지 않으면 파드가 아무것도 못 한다
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+            - port: "53"
+              protocol: TCP
+    # AWS API 호출용 HTTPS
+    - toCIDR:
+        - 0.0.0.0/0
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

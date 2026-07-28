@@ -1,0 +1,25 @@
+# 장애를 인위적으로 넣어 복원력을 검증한다. "재시도가 동작하는지 확인하라" 류 요구에 쓴다.
+# delay 와 abort 를 동시에 쓰면 delay 후 abort 된다.
+apiVersion: networking.istio.io/v1
+kind: VirtualService
+metadata:
+  name: app-fault
+  namespace: app
+spec:
+  hosts:
+    - app-svc
+  http:
+    - fault:
+        delay:
+          percentage:
+            value: 50      # 절반의 요청에 3초 지연
+          fixedDelay: 3s
+        abort:
+          percentage:
+            value: 10      # 10% 는 HTTP 503 으로 실패
+          httpStatus: 503
+      route:
+        - destination:
+            host: app-svc
+            port:
+              number: 8080

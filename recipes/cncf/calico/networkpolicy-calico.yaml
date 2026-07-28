@@ -1,0 +1,35 @@
+# 표준 NetworkPolicy 와 다른 리소스다. kubectl get networkpolicies.projectcalico.org 로 봐야 보인다.
+# order 와 Log 액션이 표준 정책에는 없는 기능이다.
+apiVersion: projectcalico.org/v3
+kind: NetworkPolicy
+metadata:
+  name: allow-frontend
+  namespace: app
+spec:
+  order: 100                 # 낮은 값이 먼저 평가된다. 생략하면 1000
+  selector: app == 'app'
+  types:
+    - Ingress
+    - Egress
+  ingress:
+    - action: Allow
+      protocol: TCP
+      source:
+        selector: app == 'frontend'
+      destination:
+        ports: [8080]
+    # 무엇이 막히는지 먼저 관찰하고 싶을 때. 통과시키면서 로그만 남긴다.
+    - action: Log
+      source: {}
+  egress:
+    - action: Allow
+      protocol: UDP
+      destination:
+        selector: "k8s-app == 'kube-dns'"
+        ports: [53]
+    - action: Allow
+      protocol: TCP
+      destination:
+        nets: ["0.0.0.0/0"]
+        ports: [443]
+    - action: Deny

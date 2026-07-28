@@ -1,0 +1,38 @@
+# 전면 교체 모드. 참고용이며 대회에서 쓰지 않는 것을 권한다.
+# 반드시 아래 순서를 지켜야 한다. 순서를 어기면 전체 파드 통신이 끊긴다.
+#
+#   1) aws-node 를 스케줄 안 되게 막는다 (삭제보다 안전 — 되돌릴 수 있다)
+#      kubectl -n kube-system patch daemonset aws-node --type='strategic' \
+#        -p='{"spec":{"template":{"spec":{"nodeSelector":{"io.cilium/aws-node-enabled":"true"}}}}}'
+#   2) Cilium 설치
+#   3) 모든 파드 재시작
+#      kubectl get pods -A -o wide | awk 'NR>1 && $4!="Running"'
+#
+# 되돌리려면 위 nodeSelector 를 제거하고 모든 파드를 재시작한다.
+
+eni:
+  enabled: true
+  awsEnablePrefixDelegation: true    # 노드당 파드 수를 늘린다
+
+ipam:
+  mode: eni
+
+egressMasqueradeInterfaces: eth+
+routingMode: native
+tunnelProtocol: ""
+
+# VPC CNI 를 대체하므로 독점해도 된다
+cni:
+  exclusive: true
+
+l7Proxy: true
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+operator:
+  replicas: 1

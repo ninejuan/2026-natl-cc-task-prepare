@@ -1,0 +1,33 @@
+# 도메인 이름으로 egress 를 제한한다. IP 가 바뀌는 관리형 서비스(S3, DynamoDB 등)에 유용.
+# toFQDNs 는 DNS 프록시를 거치므로 DNS egress 를 반드시 함께 허용해야 한다.
+apiVersion: cilium.io/v2
+kind: CiliumNetworkPolicy
+metadata:
+  name: allow-fqdn-egress
+  namespace: app
+spec:
+  endpointSelector:
+    matchLabels:
+      app: app
+  egress:
+    # ① DNS 를 허용하면서 쿼리를 Cilium 이 들여다보게 한다 (rules.dns 가 있어야 FQDN 매칭이 된다)
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: UDP
+          rules:
+            dns:
+              - matchPattern: "*"
+    # ② 허용할 도메인
+    - toFQDNs:
+        - matchName: "dynamodb.ap-northeast-2.amazonaws.com"
+        - matchPattern: "*.s3.ap-northeast-2.amazonaws.com"
+        - matchPattern: "*.amazonaws.com"
+      toPorts:
+        - ports:
+            - port: "443"
+              protocol: TCP

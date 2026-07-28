@@ -1,0 +1,12 @@
+# 서비스 간 통신을 mTLS 로 강제한다.
+# ★ STRICT 를 걸면 사이드카 없는 파드는 통신을 못 한다.
+#   채점이 임시 파드를 띄워 curl 하는 항목이 있으면 PERMISSIVE 로 두거나
+#   그 네임스페이스만 예외로 둬라.
+apiVersion: security.istio.io/v1
+kind: PeerAuthentication
+metadata:
+  name: default
+  namespace: app
+spec:
+  mtls:
+    mode: STRICT

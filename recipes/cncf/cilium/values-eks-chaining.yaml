@@ -1,0 +1,34 @@
+# helm upgrade --install cilium cilium/cilium --version 1.19.5 -n kube-system -f values-eks-chaining.yaml
+#
+# VPC CNI 를 그대로 두고 Cilium 을 정책 엔진 + 관측 도구로만 얹는다.
+# aws-node 를 건드리지 않으므로 되돌리기 쉽다.
+
+cni:
+  chainingMode: aws-cni
+  exclusive: false          # ★ 빠뜨리면 Cilium 이 CNI 설정을 독점해 VPC CNI 와 충돌한다
+
+# ENI IP 가 VPC 에서 직접 라우팅되므로 터널링/마스커레이딩이 필요 없다
+routingMode: native
+enableIPv4Masquerade: false
+enableIPv6Masquerade: false
+
+# kube-proxy 는 그대로 둔다. 대체하려면 클러스터 재구성이 필요하다.
+kubeProxyReplacement: "false"
+
+# L7 정책을 쓰려면 Envoy 가 필요하다
+l7Proxy: true
+
+hubble:
+  enabled: true
+  relay:
+    enabled: true
+  ui:
+    enabled: true
+
+operator:
+  replicas: 1
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi

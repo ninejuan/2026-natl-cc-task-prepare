@@ -1,0 +1,18 @@
+# selector 는 게이트웨이 파드의 label 이다. Helm gateway 차트로 깔았으면
+#   kubectl get pod -n istio-ingress --show-labels
+# 로 확인해서 맞춰라. 안 맞으면 Gateway 가 어디에도 붙지 않는다.
+apiVersion: networking.istio.io/v1
+kind: Gateway
+metadata:
+  name: app-gateway
+  namespace: app
+spec:
+  selector:
+    istio: ingress
+  servers:
+    - port:
+        number: 80
+        name: http
+        protocol: HTTP
+      hosts:
+        - "*"

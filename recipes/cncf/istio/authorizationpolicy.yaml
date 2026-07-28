@@ -1,0 +1,25 @@
+# 서비스 간 접근 제어. NetworkPolicy 와 달리 ServiceAccount 신원과 HTTP 메서드/경로로 판단한다.
+# ALLOW 정책이 하나라도 있으면 매칭 안 되는 요청은 거부된다(기본 거부로 전환).
+apiVersion: security.istio.io/v1
+kind: AuthorizationPolicy
+metadata:
+  name: app-authz
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: app
+  action: ALLOW
+  rules:
+    - from:
+        - source:
+            principals: ["cluster.local/ns/app/sa/frontend-sa"]
+      to:
+        - operation:
+            methods: ["GET", "POST"]
+            paths: ["/v1/book", "/v1/book/*"]
+    # 헬스체크는 누구나
+    - to:
+        - operation:
+            methods: ["GET"]
+            paths: ["/health"]

@@ -1,0 +1,24 @@
+# 서킷브레이커. 연속 5xx 를 내는 인스턴스를 풀에서 잠시 빼낸다.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: app-circuitbreaker
+  namespace: app
+spec:
+  host: app-svc
+  trafficPolicy:
+    connectionPool:
+      tcp:
+        maxConnections: 100
+        connectTimeout: 1s
+      http:
+        http1MaxPendingRequests: 10
+        http2MaxRequests: 100
+        maxRequestsPerConnection: 10
+    outlierDetection:
+      consecutive5xxErrors: 3
+      interval: 10s
+      baseEjectionTime: 30s
+      maxEjectionPercent: 50      # 전부 빼내 서비스가 죽지 않게 상한을 둔다
+    loadBalancer:
+      simple: LEAST_REQUEST

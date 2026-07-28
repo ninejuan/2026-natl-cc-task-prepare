@@ -1,0 +1,21 @@
+# 클러스터 전역 기본 차단. kube-system 을 제외하지 않으면 클러스터가 죽는다.
+apiVersion: projectcalico.org/v3
+kind: GlobalNetworkPolicy
+metadata:
+  name: default-deny
+spec:
+  order: 2000                # 다른 정책들이 먼저 평가되게 큰 값을 준다
+  selector: projectcalico.org/namespace not in {'kube-system', 'calico-system', 'tigera-operator'}
+  types:
+    - Ingress
+    - Egress
+  egress:
+    # DNS 는 항상 열어둔다
+    - action: Allow
+      protocol: UDP
+      destination:
+        selector: "k8s-app == 'kube-dns'"
+        ports: [53]
+    - action: Deny
+  ingress:
+    - action: Deny

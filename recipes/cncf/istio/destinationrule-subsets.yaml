@@ -1,0 +1,17 @@
+# 카나리의 전제. subset 이 먼저 있어야 VirtualService 가 weight 로 나눌 수 있다.
+# subset 이 없으면 "subset not found" 로 503 이 난다.
+# 파드에 version: v1 / v2 label 이 실제로 붙어 있어야 한다.
+apiVersion: networking.istio.io/v1
+kind: DestinationRule
+metadata:
+  name: app-subsets
+  namespace: app
+spec:
+  host: app-svc
+  subsets:
+    - name: v1
+      labels:
+        version: v1
+    - name: v2
+      labels:
+        version: v2

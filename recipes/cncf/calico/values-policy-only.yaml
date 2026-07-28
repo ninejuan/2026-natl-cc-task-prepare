@@ -1,0 +1,12 @@
+# helm upgrade --install calico projectcalico/tigera-operator \
+#   -n tigera-operator --create-namespace -f values-policy-only.yaml
+installation:
+  enabled: true
+  cni:
+    type: AmazonVPC
+  calicoNetwork:
+    linuxDataplane: Iptables
+    bgp: Disabled
+
+apiServer:
+  enabled: true      # projectcalico.org API 로 정책을 kubectl 로 다루려면 필요하다

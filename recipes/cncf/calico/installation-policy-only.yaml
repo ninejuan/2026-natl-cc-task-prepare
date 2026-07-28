@@ -1,0 +1,13 @@
+# cni.type 이 핵심이다. Calico 로 두면 VPC CNI 를 대체해 EKS 파드 IP 체계가 깨진다.
+# AmazonVPC 로 두면 IP 할당은 VPC CNI, 정책 집행만 Calico 가 한다.
+apiVersion: operator.tigera.io/v1
+kind: Installation
+metadata:
+  name: default
+spec:
+  cni:
+    type: AmazonVPC
+  calicoNetwork:
+    linuxDataplane: Iptables
+    bgp: Disabled
+  registry: quay.io/
