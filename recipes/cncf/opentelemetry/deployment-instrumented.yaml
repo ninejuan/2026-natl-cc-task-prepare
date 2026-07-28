@@ -1,0 +1,29 @@
+# annotation 두 줄이 전부다. 파드가 재생성될 때 주입되므로 apply 후 rollout restart 가 필요할 수 있다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: app-traced
+  namespace: app
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: app-traced
+  template:
+    metadata:
+      labels:
+        app: app-traced
+      annotations:
+        instrumentation.opentelemetry.io/inject-python: "skills-instrumentation"
+        # 사이드카 콜렉터도 같이 붙이려면
+        # sidecar.opentelemetry.io/inject: "true"
+    spec:
+      containers:
+        - name: app
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/skills-app:v1.0.0
+          ports:
+            - name: http
+              containerPort: 8080
+          env:
+            - name: OTEL_SERVICE_NAME
+              value: skills-app

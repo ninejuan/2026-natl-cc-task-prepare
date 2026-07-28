@@ -1,0 +1,25 @@
+# Jaeger Operator 를 깐 경우. Operator 가 Deployment/Service/Ingress 를 알아서 만든다.
+#   helm upgrade --install jaeger-operator jaegertracing/jaeger-operator -n observability --create-namespace
+apiVersion: jaegertracing.io/v1
+kind: Jaeger
+metadata:
+  name: skills-jaeger
+  namespace: observability
+spec:
+  strategy: allInOne
+  allInOne:
+    image: jaegertracing/all-in-one:1.65.0
+    options:
+      memory:
+        max-traces: 50000
+      collector:
+        otlp:
+          enabled: true
+  storage:
+    type: memory
+  ingress:
+    enabled: true
+    ingressClassName: alb
+    annotations:
+      alb.ingress.kubernetes.io/scheme: internet-facing
+      alb.ingress.kubernetes.io/target-type: ip

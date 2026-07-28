@@ -1,0 +1,29 @@
+# 앱 코드를 고치지 않고 트레이스를 뽑는다. Operator 가 initContainer 로 SDK 를 주입한다.
+# 파드에 annotation 을 붙이면 적용된다: instrumentation.opentelemetry.io/inject-python: "true"
+apiVersion: opentelemetry.io/v1alpha1
+kind: Instrumentation
+metadata:
+  name: skills-instrumentation
+  namespace: app
+spec:
+  exporter:
+    endpoint: http://otel-gateway-opentelemetry-collector.monitoring.svc:4318
+  propagators:
+    - tracecontext
+    - baggage
+    - xray
+  sampler:
+    type: parentbased_traceidratio
+    argument: "1.0"        # 대회에선 전량 샘플링. 운영이면 0.1 등으로 낮춘다
+  python:
+    env:
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+  java:
+    env:
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf
+  nodejs:
+    env:
+      - name: OTEL_EXPORTER_OTLP_PROTOCOL
+        value: http/protobuf

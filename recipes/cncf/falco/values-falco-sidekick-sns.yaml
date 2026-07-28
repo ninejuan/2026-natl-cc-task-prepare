@@ -1,0 +1,32 @@
+# 탐지 이벤트를 클러스터 밖으로 보낸다. "알림을 보내라" 요구에 쓴다.
+# falcosidekick 이 Falco 출력을 받아 SNS/CloudWatch/Lambda 등으로 팬아웃한다.
+
+driver:
+  kind: modern_ebpf
+tty: true
+tolerations:
+  - operator: Exists
+
+falco:
+  json_output: true
+
+falcosidekick:
+  enabled: true
+  webui:
+    enabled: true          # 브라우저에서 탐지 이벤트를 보여줘야 할 때
+  # sidekick 파드 SA 에 IRSA 로 sns:Publish / logs:PutLogEvents 권한이 필요하다
+  serviceAccount:
+    create: true
+    annotations:
+      eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/skills-falcosidekick-role
+  config:
+    aws:
+      region: ap-northeast-2
+      sns:
+        topicarn: arn:aws:sns:ap-northeast-2:000000000000:skills-falco-alerts
+        # WARNING 이상만 보낸다. debug 로 두면 SNS 가 폭주한다.
+        minimumpriority: warning
+      cloudwatchlogs:
+        loggroup: /skills/falco
+        logstream: events
+        minimumpriority: notice

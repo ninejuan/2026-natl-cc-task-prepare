@@ -1,0 +1,32 @@
+# values 의 customRules 대신 ConfigMap 으로 룰을 넣는 방법.
+# 차트가 falco-rules 라는 이름의 ConfigMap 을 마운트하도록 설정돼 있을 때 쓴다.
+# 룰 문법 오류가 있으면 파드가 CrashLoop 이 되고 로그 첫 줄에 이유가 나온다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: falco-custom-rules
+  namespace: falco
+data:
+  skills-rules.yaml: |
+    - macro: skills_namespace
+      condition: k8s.ns.name in (app, prod)
+
+    - list: allowed_processes
+      items: [python3, node, java, nginx, gunicorn]
+
+    - rule: Unexpected process in app namespace
+      desc: 허용 목록에 없는 프로세스가 앱 네임스페이스에서 실행됨
+      condition: >
+        spawned_process and container and skills_namespace
+        and not proc.name in (allowed_processes)
+      output: "허용되지 않은 프로세스 (ns=%k8s.ns.name pod=%k8s.pod.name proc=%proc.name cmd=%proc.cmdline)"
+      priority: WARNING
+      tags: [process, skills]
+
+    - rule: Write below etc
+      desc: 컨테이너에서 /etc 하위에 쓰기 시도
+      condition: >
+        open_write and container and fd.name startswith /etc
+      output: "/etc 쓰기 시도 (file=%fd.name ns=%k8s.ns.name pod=%k8s.pod.name)"
+      priority: ERROR
+      tags: [filesystem, skills]

@@ -1,0 +1,18 @@
+# 룰이 실제로 발동하는지 확인하는 파드. 아래를 실행하면 3개 룰이 걸려야 한다.
+#   kubectl exec -n app -it falco-trigger -- sh -c 'cat /etc/shadow; apk info; id'
+apiVersion: v1
+kind: Pod
+metadata:
+  name: falco-trigger
+  namespace: app
+spec:
+  containers:
+    - name: c
+      image: public.ecr.aws/docker/library/alpine:3.21
+      command: ["sleep", "3600"]
+      resources:
+        requests:
+          cpu: 10m
+          memory: 32Mi
+        limits:
+          memory: 64Mi

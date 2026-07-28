@@ -1,0 +1,80 @@
+# helm upgrade --install otel-gateway open-telemetry/opentelemetry-collector \
+#   -n monitoring --create-namespace -f values-collector-gateway.yaml
+#
+# 앱이 OTLP 로 보내고, 콜렉터가 X-Ray(트레이스) + CloudWatch EMF(메트릭) 로 내보낸다.
+
+mode: deployment
+replicaCount: 1
+
+image:
+  repository: public.ecr.aws/aws-observability/aws-otel-collector   # awsxray/awsemf 익스포터 포함
+
+serviceAccount:
+  create: true
+  name: otel-collector
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/skills-otel-role
+
+nodeSelector:
+  skills/node: addon
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    memory: 512Mi
+
+config:
+  receivers:
+    otlp:
+      protocols:
+        grpc:
+          endpoint: 0.0.0.0:4317
+        http:
+          endpoint: 0.0.0.0:4318
+
+  processors:
+    # 파이프라인 첫 번째에 둔다. 없으면 트래픽 급증 시 OOM 으로 죽는다.
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+    batch:
+      timeout: 5s
+    resourcedetection:
+      detectors: [env, eks, ec2]
+      timeout: 5s
+
+  exporters:
+    awsxray:
+      region: ap-northeast-2
+    awsemf:
+      region: ap-northeast-2
+      namespace: Skills/App
+      log_group_name: /skills/otel/metrics
+    # 스팬이 콜렉터까지 왔는지 로그로 확인하는 용도. 항상 하나 끼워둔다.
+    debug:
+      verbosity: basic
+
+  service:
+    telemetry:
+      metrics:
+        address: 0.0.0.0:8888
+    pipelines:
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, resourcedetection, batch]
+        exporters: [awsxray, debug]
+      metrics:
+        receivers: [otlp]
+        processors: [memory_limiter, resourcedetection, batch]
+        exporters: [awsemf]
+
+ports:
+  otlp:
+    enabled: true
+  otlp-http:
+    enabled: true
+  metrics:
+    enabled: true

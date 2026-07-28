@@ -1,0 +1,54 @@
+# DaemonSet 에이전트. 노드/컨테이너 메트릭을 긁어 게이트웨이로 넘긴다.
+# 앱 트레이스는 게이트웨이로 직접 보내고, 이건 인프라 메트릭 담당.
+
+mode: daemonset
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+presets:
+  # 컨테이너 로그 수집 (filelog receiver 를 자동 구성)
+  logsCollection:
+    enabled: true
+    includeCollectorLogs: false
+  # 노드/파드 메트릭 (kubeletstats receiver 자동 구성)
+  kubeletMetrics:
+    enabled: true
+  # k8s 메타데이터를 리소스 속성으로 붙인다
+  kubernetesAttributes:
+    enabled: true
+
+tolerations:
+  - operator: Exists
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 256Mi
+
+config:
+  processors:
+    memory_limiter:
+      check_interval: 1s
+      limit_percentage: 75
+      spike_limit_percentage: 15
+    batch:
+      timeout: 5s
+
+  exporters:
+    # 게이트웨이로 넘긴다. 에이전트에는 AWS 자격증명이 필요 없다.
+    otlp:
+      endpoint: otel-gateway-opentelemetry-collector.monitoring.svc:4317
+      tls:
+        insecure: true
+
+  service:
+    pipelines:
+      metrics:
+        processors: [memory_limiter, batch]
+        exporters: [otlp]
+      logs:
+        processors: [memory_limiter, batch]
+        exporters: [otlp]
