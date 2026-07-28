@@ -1,0 +1,31 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: app-helm
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/OWNER/REPO.git
+    targetRevision: main
+    path: charts/app
+    helm:
+      releaseName: app
+      valueFiles:
+        - values-prod.yaml
+      values: |
+        image:
+          repository: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/skills-app
+          tag: v1.0.0
+      parameters:
+        - name: replicaCount
+          value: "3"
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: app
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

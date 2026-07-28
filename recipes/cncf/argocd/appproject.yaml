@@ -1,0 +1,30 @@
+# "지정한 repo 와 네임스페이스로만 배포 가능하게" 요구에 쓴다.
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: skills
+  namespace: argocd
+  finalizers:
+    - resources-finalizer.argocd.argoproj.io
+spec:
+  description: Skills competition apps
+  sourceRepos:
+    - https://github.com/OWNER/REPO.git
+  destinations:
+    - server: https://kubernetes.default.svc
+      namespace: app
+    - server: https://kubernetes.default.svc
+      namespace: app-*
+  clusterResourceWhitelist:
+    - group: ""
+      kind: Namespace
+  namespaceResourceBlacklist:
+    - group: ""
+      kind: ResourceQuota
+    - group: ""
+      kind: LimitRange
+  roles:
+    - name: read-only
+      description: 읽기 전용
+      policies:
+        - p, proj:skills:read-only, applications, get, skills/*, allow

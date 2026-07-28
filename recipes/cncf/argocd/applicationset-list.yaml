@@ -1,0 +1,39 @@
+# 환경 목록으로 Application 생성. dev/stg/prod 를 한 정의로 관리한다.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: app-envs
+  namespace: argocd
+spec:
+  goTemplate: true
+  generators:
+    - list:
+        elements:
+          - env: dev
+            replicas: "1"
+          - env: stg
+            replicas: "2"
+          - env: prod
+            replicas: "3"
+  template:
+    metadata:
+      name: "app-{{.env}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/OWNER/REPO.git
+        targetRevision: main
+        path: k8s/overlays/{{.env}}
+        kustomize:
+          replicas:
+            - name: app-deploy
+              count: "{{.replicas}}"
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: "app-{{.env}}"
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+        syncOptions:
+          - CreateNamespace=true
