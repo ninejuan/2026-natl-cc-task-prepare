@@ -1,0 +1,55 @@
+# helm upgrade --install grafana grafana/grafana -n monitoring --create-namespace -f values-grafana.yaml
+
+# 과제지가 계정을 지정하면 Secret 으로 넘긴다 (secret-admin.yaml 참조).
+admin:
+  existingSecret: grafana-admin
+  userKey: admin-user
+  passwordKey: admin-password
+
+persistence:
+  enabled: false          # gp3 가 있으면 true + storageClassName: ebs-gp3
+
+nodeSelector:
+  skills/node: addon
+
+service:
+  type: ClusterIP         # ALB Ingress 로 노출한다. NLB 가 필요하면 LoadBalancer
+
+# grafana_datasource / grafana_dashboard label 이 붙은 ConfigMap 을 자동으로 읽는다
+sidecar:
+  datasources:
+    enabled: true
+    label: grafana_datasource
+    labelValue: "1"
+    searchNamespace: ALL
+  dashboards:
+    enabled: true
+    label: grafana_dashboard
+    labelValue: "1"
+    searchNamespace: ALL
+
+# 사이드카 대신 values 에 직접 박아도 된다
+datasources:
+  datasources.yaml:
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://prometheus-operated.monitoring.svc:9090
+        isDefault: true
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://loki.monitoring.svc:3100
+
+grafana.ini:
+  server:
+    root_url: "%(protocol)s://%(domain)s/"
+  auth.anonymous:
+    enabled: false
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi

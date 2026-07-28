@@ -1,0 +1,120 @@
+# 2026 후보 과제지가 요구한 4패널 구성을 그대로 만든 것:
+#   노드 CPU/Memory 사용률(Time series), 네임스페이스 Pod 상태(Stat + graph),
+#   앱 Ready Pod 수(Stat), HTTP 응답시간(Time series)
+# 패널 title 은 과제지 이미지의 글자와 정확히 맞춰라. 채점이 title 을 본다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-skills
+  namespace: monitoring
+  labels:
+    grafana_dashboard: "1"
+data:
+  skills-dashboard.json: |
+    {
+      "uid": "skills-main",
+      "title": "skills-grafana-dashboard",
+      "tags": ["skills"],
+      "timezone": "browser",
+      "schemaVersion": 39,
+      "refresh": "10s",
+      "time": { "from": "now-15m", "to": "now" },
+      "panels": [
+        {
+          "id": 1,
+          "type": "timeseries",
+          "title": "Node CPU Usage",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": { "unit": "percent", "min": 0, "max": 100 },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{instance}}",
+              "expr": "100 - (avg by (instance) (rate(node_cpu_seconds_total{mode=\"idle\"}[5m])) * 100)"
+            }
+          ]
+        },
+        {
+          "id": 2,
+          "type": "timeseries",
+          "title": "Node Memory Usage",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": { "unit": "percent", "min": 0, "max": 100 },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{instance}}",
+              "expr": "(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100"
+            }
+          ]
+        },
+        {
+          "id": 3,
+          "type": "stat",
+          "title": "Pod Status",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "options": {
+            "graphMode": "area",
+            "colorMode": "value",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "{{phase}}",
+              "expr": "sum by (phase) (kube_pod_status_phase{namespace=\"app\"})"
+            }
+          ]
+        },
+        {
+          "id": 4,
+          "type": "stat",
+          "title": "Ready Pods",
+          "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "options": {
+            "graphMode": "none",
+            "colorMode": "value",
+            "reduceOptions": { "calcs": ["lastNotNull"], "fields": "", "values": false }
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "expr": "kube_deployment_status_replicas_ready{namespace=\"app\",deployment=\"app-deploy\"}"
+            }
+          ]
+        },
+        {
+          "id": 5,
+          "type": "timeseries",
+          "title": "HTTP Response Time",
+          "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
+          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "fieldConfig": {
+            "defaults": { "unit": "s" },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "refId": "A",
+              "legendFormat": "p50",
+              "expr": "histogram_quantile(0.5, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"app\"}[5m])))"
+            },
+            {
+              "refId": "B",
+              "legendFormat": "p95",
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{namespace=\"app\"}[5m])))"
+            }
+          ]
+        }
+      ]
+    }

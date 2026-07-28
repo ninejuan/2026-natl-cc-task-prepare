@@ -1,0 +1,106 @@
+# helm upgrade --install alloy grafana/alloy -n monitoring -f values-alloy.yaml
+# Promtail 후속. 노드마다 떠서 /var/log/pods 를 읽어 Loki 로 밀어넣는다.
+
+controller:
+  type: daemonset
+  tolerations:
+    - operator: Exists          # DaemonSet 은 모든 노드에 떠야 한다
+
+alloy:
+  mounts:
+    varlog: true                # /var/log 호스트 마운트
+  configMap:
+    content: |
+      // 이 노드의 파드만 대상으로 한다. 전체를 보면 CPU/메모리가 낭비된다.
+      discovery.kubernetes "pods" {
+        role = "pod"
+        selectors {
+          role  = "pod"
+          field = "spec.nodeName=" + coalesce(sys.env("HOSTNAME"), constants.hostname)
+        }
+      }
+
+      discovery.relabel "pod_logs" {
+        targets = discovery.kubernetes.pods.targets
+
+        rule {
+          source_labels = ["__meta_kubernetes_namespace"]
+          target_label  = "namespace"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_name"]
+          target_label  = "pod"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_container_name"]
+          target_label  = "container"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_namespace", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          target_label  = "job"
+        }
+        rule {
+          source_labels = ["__meta_kubernetes_pod_uid", "__meta_kubernetes_pod_container_name"]
+          separator     = "/"
+          action        = "replace"
+          replacement   = "/var/log/pods/*$1/*.log"
+          target_label  = "__path__"
+        }
+      }
+
+      local.file_match "pod_logs" {
+        path_targets = discovery.relabel.pod_logs.output
+      }
+
+      loki.source.file "pod_logs" {
+        targets    = local.file_match.pod_logs.targets
+        forward_to = [loki.process.pod_logs.receiver]
+      }
+
+      loki.process "pod_logs" {
+        // containerd 로그 포맷을 벗겨 log / stream / time 을 뽑는다
+        stage.cri {}
+
+        // 앱이 JSON 한 줄로 찍는 경우 필드 추출
+        stage.json {
+          expressions = {
+            level       = "level",
+            path        = "path",
+            status_code = "status_code",
+          }
+        }
+
+        // /health 로그는 버린다
+        stage.drop {
+          source     = "path"
+          value      = "/health"
+          drop_counter_reason = "healthcheck"
+        }
+
+        // level 만 label 로 올린다. 카디널리티가 낮은 값만 label 로 쓴다.
+        stage.labels {
+          values = {
+            level = "",
+          }
+        }
+
+        stage.static_labels {
+          values = {
+            cluster = "skills-eks",
+          }
+        }
+
+        forward_to = [loki.write.default.receiver]
+      }
+
+      loki.write "default" {
+        endpoint {
+          url = "http://loki.monitoring.svc:3100/loki/api/v1/push"
+        }
+      }
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi

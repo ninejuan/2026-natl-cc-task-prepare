@@ -1,0 +1,91 @@
+# helm upgrade --install loki grafana/loki -n monitoring --create-namespace -f values-loki-monolithic-s3.yaml
+# 버킷 이름과 role ARN 을 바꿔서 쓴다.
+
+deploymentMode: Monolithic     # 차트 12.0.0+ 이름. 그 이전은 SingleBinary
+
+loki:
+  auth_enabled: false          # 멀티테넌시 끔. 켜면 모든 요청에 X-Scope-OrgID 헤더가 필요하다
+  commonConfig:
+    replication_factor: 1      # 1레플리카에서 기본값 3 이면 쓰기가 실패한다
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+    retention_period: 24h
+    reject_old_samples: false
+  storage:
+    type: s3
+    bucketNames:
+      chunks: skills-loki-000
+      ruler: skills-loki-000
+      admin: skills-loki-000
+    s3:
+      region: ap-northeast-2
+      s3ForcePathStyle: false
+  pattern_ingester:
+    enabled: true
+
+serviceAccount:
+  create: true
+  name: loki
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/skills-loki-role
+
+singleBinary:
+  replicas: 1
+  nodeSelector:
+    skills/node: addon
+  persistence:
+    enabled: false             # 청크는 S3 로 간다. WAL 만 잃는다
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+minio:
+  enabled: false
+
+# Monolithic 을 켜도 아래 기본값이 남아 파드가 같이 뜬다. 전부 0 으로 내린다.
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

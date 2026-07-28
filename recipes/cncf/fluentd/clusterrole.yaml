@@ -1,0 +1,9 @@
+# kubernetes_metadata 필터가 파드 메타데이터를 조회하는 데 필요하다.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: fluentd
+rules:
+  - apiGroups: [""]
+    resources: ["pods", "namespaces"]
+    verbs: ["get", "list", "watch"]

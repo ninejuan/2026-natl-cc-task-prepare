@@ -1,0 +1,19 @@
+# Grafana ServiceAccount 에 IRSA 로 cloudwatch:GetMetricData, ListMetrics, logs:* 권한이 있어야 한다.
+# authType: default 는 파드에 붙은 자격증명(IRSA)을 쓴다.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-datasource-cloudwatch
+  namespace: monitoring
+  labels:
+    grafana_datasource: "1"
+data:
+  cloudwatch.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: CloudWatch
+        type: cloudwatch
+        access: proxy
+        jsonData:
+          authType: default
+          defaultRegion: ap-northeast-2

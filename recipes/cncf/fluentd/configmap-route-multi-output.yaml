@@ -1,0 +1,79 @@
+# 하나의 입력을 조건에 따라 다른 목적지로 나눈다. Fluent Bit 으로는 번거로운 구성.
+# ERROR 는 OpenSearch(검색용), 전체는 S3(보관용).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-route-config
+  namespace: logging
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      path /var/log/containers/app-*_app_*.log
+      pos_file /var/log/fluentd-app.log.pos
+      tag app.raw
+      read_from_head true
+      <parse>
+        @type cri
+      </parse>
+    </source>
+
+    <filter app.raw>
+      @type parser
+      key_name message
+      reserve_data true
+      <parse>
+        @type json
+      </parse>
+    </filter>
+
+    # level 값에 따라 태그를 갈아끼운다. rewrite_tag_filter 가 분기의 핵심.
+    <match app.raw>
+      @type rewrite_tag_filter
+      <rule>
+        key level
+        pattern /^(ERROR|FATAL)$/
+        tag app.error
+      </rule>
+      <rule>
+        key level
+        pattern /.+/
+        tag app.normal
+      </rule>
+    </match>
+
+    # 에러만 OpenSearch 로
+    <match app.error>
+      @type copy
+      <store>
+        @type opensearch
+        host skills-os.ap-northeast-2.es.amazonaws.com
+        port 443
+        scheme https
+        logstash_format true
+        logstash_prefix app-error
+        <buffer>
+          flush_interval 5s
+        </buffer>
+      </store>
+      <store>
+        @type s3
+        s3_bucket skills-logs-000
+        s3_region ap-northeast-2
+        path errors/
+        <buffer>
+          flush_interval 60s
+        </buffer>
+      </store>
+    </match>
+
+    # 나머지는 S3 보관만
+    <match app.normal>
+      @type s3
+      s3_bucket skills-logs-000
+      s3_region ap-northeast-2
+      path all/
+      <buffer>
+        flush_interval 60s
+      </buffer>
+    </match>

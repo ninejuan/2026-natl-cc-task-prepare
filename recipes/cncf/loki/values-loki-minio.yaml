@@ -1,0 +1,69 @@
+# S3 를 만들 시간도 없을 때. MinIO 서브차트로 클러스터 안에서 끝낸다.
+# 파드가 하나 더 뜨고 2026-10-31 제거 예정이라, 시간이 있으면 S3 쪽을 쓴다.
+
+deploymentMode: Monolithic
+
+loki:
+  auth_enabled: false
+  commonConfig:
+    replication_factor: 1
+  schemaConfig:
+    configs:
+      - from: "2024-04-01"
+        store: tsdb
+        object_store: s3
+        schema: v13
+        index:
+          prefix: loki_index_
+          period: 24h
+  limits_config:
+    allow_structured_metadata: true
+    volume_enabled: true
+    retention_period: 24h
+  pattern_ingester:
+    enabled: true
+
+ignoreMinioDeprecation: true
+minio:
+  enabled: true
+
+singleBinary:
+  replicas: 1
+  nodeSelector:
+    skills/node: addon
+
+backend:
+  replicas: 0
+read:
+  replicas: 0
+write:
+  replicas: 0
+ingester:
+  replicas: 0
+querier:
+  replicas: 0
+queryFrontend:
+  replicas: 0
+queryScheduler:
+  replicas: 0
+distributor:
+  replicas: 0
+compactor:
+  replicas: 0
+indexGateway:
+  replicas: 0
+bloomPlanner:
+  replicas: 0
+bloomBuilder:
+  replicas: 0
+bloomGateway:
+  replicas: 0
+
+chunksCache:
+  enabled: false
+resultsCache:
+  enabled: false
+lokiCanary:
+  enabled: false
+test:
+  enabled: false

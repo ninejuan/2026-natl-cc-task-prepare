@@ -1,0 +1,77 @@
+# helm upgrade --install kps prometheus-community/kube-prometheus-stack \
+#   -n monitoring --create-namespace -f values-kube-prometheus-stack.yaml
+
+# EKS 는 관리형 컨트롤플레인이라 아래 4개는 메트릭 엔드포인트가 노출되지 않는다.
+# 켜두면 ServiceMonitor 가 영구 Down 으로 남고, 채점이 이 ServiceMonitor 존재 여부를 센다.
+kubeControllerManager:
+  enabled: false
+kubeScheduler:
+  enabled: false
+kubeEtcd:
+  enabled: false
+kubeProxy:
+  enabled: false
+
+kubeApiServer:
+  enabled: true
+coreDns:
+  enabled: true
+
+kubeStateMetrics:
+  enabled: true
+nodeExporter:
+  enabled: true
+
+prometheus:
+  prometheusSpec:
+    retention: 6h
+    scrapeInterval: 15s
+    evaluationInterval: 15s
+    # 우리가 만든 ServiceMonitor 에 release label 을 안 붙여도 잡히게 한다
+    serviceMonitorSelectorNilUsesHelmValues: false
+    podMonitorSelectorNilUsesHelmValues: false
+    ruleSelectorNilUsesHelmValues: false
+    scrapeConfigSelectorNilUsesHelmValues: false
+    resources:
+      requests:
+        cpu: 200m
+        memory: 512Mi
+    # gp3 StorageClass 가 있으면 주석 해제 (없으면 emptyDir 로 동작)
+    # storageSpec:
+    #   volumeClaimTemplate:
+    #     spec:
+    #       storageClassName: ebs-gp3
+    #       accessModes: ["ReadWriteOnce"]
+    #       resources:
+    #         requests:
+    #           storage: 10Gi
+    nodeSelector:
+      skills/node: addon
+
+alertmanager:
+  alertmanagerSpec:
+    nodeSelector:
+      skills/node: addon
+
+# 이 차트에 포함된 Grafana 를 쓸 때. 별도로 깔 거면 enabled: false
+grafana:
+  enabled: true
+  adminPassword: ChangeMe1234!
+  nodeSelector:
+    skills/node: addon
+  service:
+    type: ClusterIP
+  # ConfigMap 에 grafana_dashboard=1 label 을 붙이면 자동 로드된다
+  sidecar:
+    dashboards:
+      enabled: true
+      label: grafana_dashboard
+      searchNamespace: ALL
+    datasources:
+      enabled: true
+      label: grafana_datasource
+      searchNamespace: ALL
+
+prometheusOperator:
+  nodeSelector:
+    skills/node: addon

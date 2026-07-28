@@ -1,0 +1,20 @@
+# 클러스터 밖 타깃. EC2 에 뜬 node_exporter 나 앱을 긁을 때.
+# ec2SDConfigs 를 쓰려면 Prometheus 파드에 ec2:DescribeInstances 권한(IRSA)이 필요하다.
+apiVersion: monitoring.coreos.com/v1alpha1
+kind: ScrapeConfig
+metadata:
+  name: external-ec2
+  namespace: monitoring
+spec:
+  ec2SDConfigs:
+    - region: ap-northeast-2
+      port: 9100
+      filters:
+        - name: tag:Name
+          values: ["skills-app-ec2"]
+  relabelings:
+    - sourceLabels: [__meta_ec2_tag_Name]
+      targetLabel: instance
+    - sourceLabels: [__meta_ec2_private_ip]
+      targetLabel: __address__
+      replacement: "$1:9100"

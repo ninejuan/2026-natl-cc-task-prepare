@@ -1,0 +1,46 @@
+# record: 무거운 쿼리를 미리 계산해 대시보드 패널을 가볍게 한다.
+# alert: for 는 조건이 유지돼야 하는 시간. 채점 대기가 3분이면 for 를 1m 이하로 둔다.
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: app-rules
+  namespace: monitoring
+  labels:
+    release: kps
+spec:
+  groups:
+    - name: app.rules
+      interval: 15s
+      rules:
+        - record: app:http_request_rate5m
+          expr: sum(rate(http_requests_total{namespace="app"}[5m]))
+
+        - record: app:http_error_ratio5m
+          expr: |
+            sum(rate(http_requests_total{namespace="app",status_code=~"5.."}[5m]))
+            / sum(rate(http_requests_total{namespace="app"}[5m]))
+
+        - alert: AppPodNotReady
+          expr: kube_deployment_status_replicas_ready{namespace="app",deployment="app-deploy"} < 1
+          for: 1m
+          labels:
+            severity: critical
+          annotations:
+            summary: "app-deploy 에 Ready 파드가 없습니다"
+
+        - alert: AppHighErrorRate
+          expr: app:http_error_ratio5m > 0.05
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "5xx 비율이 5% 를 넘었습니다"
+
+        - alert: NodeCpuHigh
+          expr: |
+            100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100) > 80
+          for: 1m
+          labels:
+            severity: warning
+          annotations:
+            summary: "노드 CPU 사용률 80% 초과"

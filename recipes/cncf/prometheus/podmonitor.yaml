@@ -1,0 +1,16 @@
+# Service 가 없는 워크로드(Job, DaemonSet 등)의 메트릭을 파드에서 직접 긁는다.
+apiVersion: monitoring.coreos.com/v1
+kind: PodMonitor
+metadata:
+  name: app-pods
+  namespace: app
+spec:
+  namespaceSelector:
+    matchNames: ["app"]
+  selector:
+    matchLabels:
+      app: app
+  podMetricsEndpoints:
+    - port: metrics     # 파드 containerPort 의 name
+      path: /metrics
+      interval: 15s

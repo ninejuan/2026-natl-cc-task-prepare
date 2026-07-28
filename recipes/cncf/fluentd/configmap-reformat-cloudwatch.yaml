@@ -1,0 +1,76 @@
+# 과제지가 지정한 스키마로 로그를 재조립하는 구성.
+# 목표 출력:
+#   {"timestamp":"...","method":"POST","path":"/v1/book","status_code":200,"client_ip":"10.0.12.1"}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fluentd-config
+  namespace: logging
+data:
+  fluent.conf: |
+    <source>
+      @type tail
+      @id in_tail_container_logs
+      path /var/log/containers/app-*_app_*.log
+      pos_file /var/log/fluentd-app.log.pos
+      tag kubernetes.*
+      read_from_head true
+      <parse>
+        @type cri
+      </parse>
+    </source>
+
+    <filter kubernetes.**>
+      @type kubernetes_metadata
+      @id filter_kube_metadata
+    </filter>
+
+    # 앱이 JSON 한 줄로 찍는 경우 log 필드를 펼친다. reserve_data 를 켜야 원래 필드가 남는다.
+    <filter kubernetes.**>
+      @type parser
+      key_name message
+      reserve_data true
+      remove_key_name_field false
+      emit_invalid_record_to_error false
+      <parse>
+        @type json
+      </parse>
+    </filter>
+
+    # /health 로그는 버린다
+    <filter kubernetes.**>
+      @type grep
+      <exclude>
+        key path
+        pattern /^\/health$/
+      </exclude>
+    </filter>
+
+    # 중첩 메타데이터에서 필요한 값만 끌어올리고, 나머지는 전부 지운다.
+    # remove_keys 를 빼면 kubernetes 블록이 그대로 나가서 형식이 안 맞는다.
+    <filter kubernetes.**>
+      @type record_transformer
+      enable_ruby true
+      <record>
+        timestamp ${time.utc.strftime('%Y-%m-%dT%H:%M:%SZ')}
+        client_ip ${record.dig("kubernetes", "pod_ip") || record["client_ip"]}
+        status_code ${record["status_code"].to_i}
+      </record>
+      remove_keys kubernetes,docker,stream,logtag,message,log,$.kubernetes.labels
+    </filter>
+
+    <match kubernetes.**>
+      @type cloudwatch_logs
+      region ap-northeast-2
+      log_group_name /skills/eks/app
+      log_stream_name_key kubernetes_pod
+      use_tag_as_stream false
+      auto_create_stream true
+      json_handler json
+      <buffer>
+        flush_interval 5s
+        chunk_limit_size 2m
+        retry_forever false
+        retry_max_times 5
+      </buffer>
+    </match>

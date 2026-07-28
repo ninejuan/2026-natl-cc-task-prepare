@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: app
+  namespace: app
+  labels:
+    release: kps        # serviceMonitorSelectorNilUsesHelmValues: false 면 없어도 된다
+spec:
+  namespaceSelector:
+    matchNames: ["app"]
+  selector:
+    matchLabels:
+      app: app          # Service 의 label 과 일치해야 한다
+  endpoints:
+    - port: metrics     # Service 포트의 name
+      path: /metrics
+      interval: 15s
+      scrapeTimeout: 10s
