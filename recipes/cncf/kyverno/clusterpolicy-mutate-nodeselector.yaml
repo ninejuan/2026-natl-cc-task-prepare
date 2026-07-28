@@ -1,0 +1,24 @@
+# "이 네임스페이스 파드는 전부 특정 노드그룹에서" 요구를 파드 매니페스트 수정 없이 만족시킨다.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: pin-to-app-nodes
+spec:
+  background: false
+  rules:
+    - name: inject-nodeselector
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["app"]
+      mutate:
+        patchStrategicMerge:
+          spec:
+            +(nodeSelector):
+              skills/node: application
+            tolerations:
+              - key: dedicated
+                operator: Equal
+                value: application
+                effect: NoSchedule

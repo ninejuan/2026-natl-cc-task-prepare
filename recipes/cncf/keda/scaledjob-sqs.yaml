@@ -1,0 +1,37 @@
+# 메시지를 1건씩 Job 으로 처리하는 배치형. 워커가 처리 후 종료하는 구조일 때 ScaledObject 대신 쓴다.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledJob
+metadata:
+  name: worker-job
+  namespace: app
+spec:
+  jobTargetRef:
+    parallelism: 1
+    completions: 1
+    backoffLimit: 2
+    template:
+      spec:
+        serviceAccountName: worker-sa
+        restartPolicy: Never
+        containers:
+          - name: worker
+            image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/skills-worker:v1.0.0
+            env:
+              - name: AWS_REGION
+                value: ap-northeast-2
+              - name: QUEUE_URL
+                value: https://sqs.ap-northeast-2.amazonaws.com/000000000000/skills-queue
+  pollingInterval: 10
+  maxReplicaCount: 20
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  scalingStrategy:
+    strategy: default
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: sqs-auth
+      metadata:
+        queueURL: https://sqs.ap-northeast-2.amazonaws.com/000000000000/skills-queue
+        queueLength: "1"
+        awsRegion: ap-northeast-2

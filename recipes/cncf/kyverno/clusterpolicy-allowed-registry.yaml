@@ -1,0 +1,22 @@
+# CEL 방식. pattern 으로 표현하기 어려운 조건(문자열 함수, 전체 순회)에 쓴다.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: allowed-registry
+spec:
+  background: false
+  rules:
+    - name: only-our-ecr
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+      validate:
+        failureAction: Enforce
+        cel:
+          expressions:
+            - expression: >-
+                object.spec.containers.all(c,
+                  c.image.startsWith('000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/')
+                  && c.image.contains(':'))
+              message: "허용된 ECR 레지스트리의 태그 지정 이미지만 사용할 수 있습니다"

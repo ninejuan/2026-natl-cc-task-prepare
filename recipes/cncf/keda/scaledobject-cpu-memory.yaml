@@ -1,0 +1,28 @@
+# HPA 를 따로 만들지 않고 KEDA 한 곳에서 CPU/메모리까지 관리할 때.
+# cpu/memory 트리거는 컨테이너에 resources.requests 가 있어야 동작한다.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-resource
+  namespace: app
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 2
+  maxReplicaCount: 10
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleUp:
+          stabilizationWindowSeconds: 0
+        scaleDown:
+          stabilizationWindowSeconds: 60
+  triggers:
+    - type: cpu
+      metricType: Utilization
+      metadata:
+        value: "50"
+    - type: memory
+      metricType: Utilization
+      metadata:
+        value: "70"

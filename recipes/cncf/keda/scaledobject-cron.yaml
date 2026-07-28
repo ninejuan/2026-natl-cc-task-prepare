@@ -1,0 +1,18 @@
+# 시간대별 최소 파드 수. timezone 은 IANA 이름. 다른 트리거와 함께 쓰면 최대값이 채택된다.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-cron
+  namespace: app
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  triggers:
+    - type: cron
+      metadata:
+        timezone: Asia/Seoul
+        start: 0 9 * * *
+        end: 0 18 * * *
+        desiredReplicas: "5"

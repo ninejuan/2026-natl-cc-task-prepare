@@ -1,0 +1,15 @@
+# 정책은 그대로 두고 특정 워크로드만 예외. 정책을 지우거나 Audit 으로 내리지 않고 빠져나가는 방법.
+apiVersion: kyverno.io/v2
+kind: PolicyException
+metadata:
+  name: allow-monitoring-latest
+  namespace: kyverno
+spec:
+  exceptions:
+    - policyName: disallow-latest-tag
+      ruleNames: ["require-explicit-tag"]
+  match:
+    any:
+      - resources:
+          kinds: ["Pod"]
+          namespaces: ["monitoring"]

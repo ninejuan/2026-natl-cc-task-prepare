@@ -1,0 +1,21 @@
+# VAP 로는 불가능한 영역. 없는 값을 채워 넣는다.
+# +(...) 앵커는 "키가 없을 때만 추가" 를 뜻한다. 기존 값은 덮지 않는다.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: add-default-labels
+spec:
+  background: false
+  rules:
+    - name: add-env-label
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["prod"]
+      mutate:
+        patchStrategicMerge:
+          metadata:
+            labels:
+              +(skills.kr/env): prod
+              +(skills.kr/managed-by): kyverno

@@ -1,0 +1,24 @@
+# queueLength = 파드 1개당 처리할 메시지 수. 메시지 12개 / queueLength 5 => 3 파드.
+# pollingInterval 을 짧게 둬야 채점 대기(3분) 안에 스케일아웃이 관측된다.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-scaledobject
+  namespace: app
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 0
+  maxReplicaCount: 20
+  pollingInterval: 10
+  cooldownPeriod: 30
+  triggers:
+    - type: aws-sqs-queue
+      authenticationRef:
+        name: sqs-auth
+      metadata:
+        queueURL: https://sqs.ap-northeast-2.amazonaws.com/000000000000/skills-queue
+        queueLength: "5"
+        awsRegion: ap-northeast-2
+        # 처리 중(NotVisible) 메시지까지 셀지 여부
+        scaleOnInFlight: "true"

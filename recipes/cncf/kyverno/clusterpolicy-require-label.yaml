@@ -1,0 +1,21 @@
+# X(...) 앵커는 "이 필드는 반드시 존재해야 한다" 를 뜻한다.
+apiVersion: kyverno.io/v1
+kind: ClusterPolicy
+metadata:
+  name: require-env-label
+spec:
+  background: false
+  rules:
+    - name: check-env-label
+      match:
+        any:
+          - resources:
+              kinds: ["Pod"]
+              namespaces: ["prod"]
+      validate:
+        failureAction: Enforce
+        message: "skills.kr/env=prod label 이 필요합니다"
+        pattern:
+          metadata:
+            labels:
+              skills.kr/env: "prod"

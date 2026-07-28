@@ -1,0 +1,30 @@
+# replicas 를 적지 않는다. KEDA 가 만든 HPA 가 관리한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: app
+spec:
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      serviceAccountName: worker-sa
+      nodeSelector:
+        skills/nodepool: worker
+      containers:
+        - name: worker
+          image: 000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/skills-worker:v1.0.0
+          env:
+            - name: AWS_REGION
+              value: ap-northeast-2
+            - name: QUEUE_URL
+              value: https://sqs.ap-northeast-2.amazonaws.com/000000000000/skills-queue
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi

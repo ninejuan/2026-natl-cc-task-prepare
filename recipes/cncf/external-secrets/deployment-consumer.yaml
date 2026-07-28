@@ -1,0 +1,31 @@
+# ESO 가 만든 Secret 은 평범한 k8s Secret 이라 envFrom / volume 둘 다 된다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: secret-consumer
+  namespace: app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: secret-consumer
+  template:
+    metadata:
+      labels:
+        app: secret-consumer
+    spec:
+      containers:
+        - name: app
+          image: public.ecr.aws/docker/library/alpine:3.21
+          command: ["sh", "-c", "env | grep DB_ && sleep 3600"]
+          envFrom:
+            - secretRef:
+                name: db-credentials
+          volumeMounts:
+            - name: dsn
+              mountPath: /etc/app
+              readOnly: true
+      volumes:
+        - name: dsn
+          secret:
+            secretName: db-dsn

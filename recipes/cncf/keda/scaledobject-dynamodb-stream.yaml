@@ -1,0 +1,20 @@
+# DynamoDB Stream 의 샤드 수로 컨슈머 파드를 맞춘다. Stream 이 켜져 있어야 한다.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: stream-consumer
+  namespace: app
+spec:
+  scaleTargetRef:
+    name: stream-consumer
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  pollingInterval: 10
+  triggers:
+    - type: aws-dynamodb-streams
+      authenticationRef:
+        name: sqs-auth
+      metadata:
+        tableName: skills-table
+        awsRegion: ap-northeast-2
+        shardCount: "2"
