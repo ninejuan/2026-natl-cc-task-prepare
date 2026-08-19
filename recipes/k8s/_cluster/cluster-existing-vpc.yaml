@@ -1,0 +1,75 @@
+# 1과제 추가 항목의 흔한 형태 — "과제지에서 만든 VPC 안에 클러스터를 하나 더".
+#
+#   source addon.env                       # bin/discover.sh 가 만든 서브넷 ID
+#   envsubst < cluster-existing-vpc.yaml > /tmp/c.yaml && eksctl create cluster -f /tmp/c.yaml
+#
+# ★ 서브넷 태그가 먼저 있어야 한다. 없으면 eksctl 이 거부하거나 ALB 가 서브넷을 못 고른다.
+#   aws ec2 create-tags --resources $SUBNET_PRIV_A $SUBNET_PRIV_B \
+#     --tags Key=kubernetes.io/role/internal-elb,Value=1 Key=karpenter.sh/discovery,Value=skills-eks2
+#   aws ec2 create-tags --resources $SUBNET_PUB_A $SUBNET_PUB_B \
+#     --tags Key=kubernetes.io/role/elb,Value=1
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: skills-eks2
+  region: ap-northeast-2
+  version: "1.35"
+  tags:
+    Name: skills-eks2
+    karpenter.sh/discovery: skills-eks2
+
+vpc:
+  id: "${VPC_ID}"
+  subnets:
+    private:
+      ap-northeast-2a: { id: "${SUBNET_PRIV_A}" }
+      ap-northeast-2b: { id: "${SUBNET_PRIV_B}" }
+    public:
+      ap-northeast-2a: { id: "${SUBNET_PUB_A}" }
+      ap-northeast-2b: { id: "${SUBNET_PUB_B}" }
+  # 기존 VPC 의 NAT 를 그대로 쓴다. eksctl 이 NAT 를 새로 만들지 않게 한다.
+  nat:
+    gateway: Disable
+
+iam:
+  withOIDC: true
+  serviceAccounts:
+    - metadata:
+        name: aws-load-balancer-controller
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
+
+addons:
+  - name: vpc-cni
+    version: latest
+    resolveConflicts: overwrite
+  - name: coredns
+    version: latest
+    resolveConflicts: overwrite
+  - name: kube-proxy
+    version: latest
+    resolveConflicts: overwrite
+  - name: eks-pod-identity-agent
+    version: latest
+    resolveConflicts: overwrite
+  - name: metrics-server
+    version: latest
+    resolveConflicts: overwrite
+
+managedNodeGroups:
+  - name: app
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 4
+    privateNetworking: true
+    volumeSize: 30
+    volumeType: gp3
+    amiFamily: AmazonLinux2023
+    labels:
+      skills/node: application
+    tags:
+      Name: skills-eks2-node
+    disableIMDSv1: true

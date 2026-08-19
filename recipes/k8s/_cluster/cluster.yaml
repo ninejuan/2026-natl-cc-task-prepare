@@ -1,0 +1,94 @@
+# eksctl create cluster -f cluster.yaml
+#
+# 클러스터 + 노드그룹 2개 + 애드온 6개 + IRSA Role 2개를 한 번에 만든다.
+# eksctl 이 CloudFormation 스택을 병렬로 돌리므로 손으로 순서를 짜는 것보다 빠르다.
+# 이름/리전/버전만 과제지에 맞게 바꿔 쓴다.
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: skills-eks
+  region: ap-northeast-2
+  version: "1.35"
+  tags:
+    Name: skills-eks
+    karpenter.sh/discovery: skills-eks   # Karpenter 를 나중에 붙일 때 서브넷/SG 발견용
+
+iam:
+  withOIDC: true                          # IRSA 전제. 빼면 아래 serviceAccounts 가 동작하지 않는다
+  serviceAccounts:
+    # wellKnownPolicies 를 쓰면 IAM 정책을 따로 만들 필요가 없다.
+    # 클러스터 생성 중에 Role + ServiceAccount 가 함께 만들어진다.
+    - metadata:
+        name: aws-load-balancer-controller
+        namespace: kube-system
+      wellKnownPolicies:
+        awsLoadBalancerController: true
+    - metadata:
+        name: efs-csi-controller-sa
+        namespace: kube-system
+      wellKnownPolicies:
+        efsCSIController: true
+
+# 과제지가 "모든 로그 수집" 을 요구하는 경우가 있다. 필요 없으면 이 블록을 지운다.
+cloudWatch:
+  clusterLogging:
+    enableTypes: ["*"]
+
+addons:
+  - name: vpc-cni
+    version: latest
+    resolveConflicts: overwrite
+    # NetworkPolicy 를 쓸 거면 켠다 (../netpol/ 참조)
+    # configurationValues: '{"enableNetworkPolicy":"true"}'
+  - name: coredns
+    version: latest
+    resolveConflicts: overwrite
+  - name: kube-proxy
+    version: latest
+    resolveConflicts: overwrite
+  - name: aws-ebs-csi-driver
+    version: latest
+    resolveConflicts: overwrite
+    wellKnownPolicies:
+      ebsCSIController: true
+  - name: eks-pod-identity-agent      # Pod Identity 를 쓸 때 필요
+    version: latest
+    resolveConflicts: overwrite
+  - name: metrics-server              # 없으면 HPA 가 <unknown> 으로 남는다
+    version: latest
+    resolveConflicts: overwrite
+
+managedNodeGroups:
+  # 앱용. 채점이 kubectl get nodes -l 로 찾으므로 labels 를 반드시 채운다.
+  - name: app
+    instanceType: t3.medium
+    desiredCapacity: 2
+    minSize: 2
+    maxSize: 4
+    privateNetworking: true
+    volumeSize: 30
+    volumeType: gp3
+    amiFamily: AmazonLinux2023
+    labels:
+      skills/node: application
+    tags:
+      Name: skills-k8snode-app
+    # 파드가 노드 Role 로 폴백하는 것을 막는다 (최소권한 요구가 있을 때)
+    disableIMDSv1: true
+
+  # 애드온용 (LBC, Prometheus, Grafana 등)
+  - name: addon
+    instanceType: t3.medium
+    desiredCapacity: 1
+    minSize: 1
+    maxSize: 2
+    privateNetworking: true
+    volumeSize: 30
+    volumeType: gp3
+    amiFamily: AmazonLinux2023
+    labels:
+      skills/node: addon
+    tags:
+      Name: skills-k8snode-addon
+    disableIMDSv1: true
