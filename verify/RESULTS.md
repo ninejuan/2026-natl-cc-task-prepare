@@ -62,10 +62,29 @@
 - Firehose 는 즉시 배달 안 함 — 동적 파티셔닝 시 버퍼 최소 60초.
 - MSK/Flink VPC 내부 전용, MSK SG self-inbound 9098 필수.
 
+## analytics 보강분 추가 실검증 (2차)
+
+| 대상 | 결과 | 비고 |
+|---|---|---|
+| `kinesis/transform-lambda.py` | ✓ | Firehose 이벤트로 invoke: CLICK→click 정규화·dt보강·Ok / value없음 Dropped |
+| `kinesis/firehose-parquet-conf.json` | ✓ | Direct PUT + Lambda transform + Parquet 변환 → S3 .parquet → Athena 재쿼리(click 3/sum 60) |
+| `glue/etl_aggregate_join.py` | ✓ | Glue job SUCCEEDED, events+users 조인·집계 → Parquet (premium/click 2/30, basic/view 1/5) |
+| `msk/admin.py` | ✓ | 토픽 orders 6파티션 생성·list (VPC EC2 + IAM SASL) |
+| `msk/producer.py` · `consumer.py` | ✓ | 10건 발행 → 10건 소비 왕복 (IAM SASL 9098) |
+| athena `queries/*.sql` | ✓ | (1차) DDL·집계·윈도우·CTAS·UNLOAD |
+| `kinesis/producer.py` | ✓ | (1차) 실 스트림 15건 발행 |
+
+### MSK IAM 인증 — 실검증 중 발견한 버그 2개 (코드·카드 수정 완료)
+1. `kafka.sasl.oauth.AbstractTokenProvider` import 실패 → kafka-python-ng 2.2+ 는
+   `sasl_mechanism="AWS_MSK_IAM"` 내장(`kafka/sasl/msk.py`). `aws-msk-iam-sasl-signer`
+   불필요, botocore 만 필요. producer/consumer/admin 3개 전면 수정.
+2. botocore `region: None` → `NoBrokersAvailable`. `AWS_DEFAULT_REGION` 명시 필요.
+- Glue Parquet 타입 함정: SUM(int)→INT64 라 Athena 테이블 스키마를 double 로 잡으면 HIVE_BAD_DATA.
+
 ## 미검증 / 확인 필요
 
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
 - `lambda/image-resize` (Pillow 네이티브 의존성 — 실배포 시 아키텍처 wheel 확인 필요)
 - `apigateway/vtl/sns-publish-req`, `validate-transform-req` (문법만, 실 API 미검증)
-- `glue/etl_json_to_parquet.py` (Spark job 실행 — DPU 비용), `managed-flink` SQL 노트북(Zeppelin UI), `msk` produce/consume (VPC 내 EC2)
+- `managed-flink` SQL 노트북 (Zeppelin UI 기반 — CLI 자동화 불가. Studio RUNNING 은 확인, SQL 실행은 브라우저 필요)
 - k8s/cncf 매니페스트 (오프라인 문법만)

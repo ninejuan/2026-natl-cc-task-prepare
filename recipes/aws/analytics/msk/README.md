@@ -10,7 +10,7 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 
 **MSK 는 VPC 내부 서비스다.** 부트스트랩 브로커가 private 이라 **클라이언트(producer/consumer)도 같은 VPC 안 EC2** 에서 돌려야 한다. CloudShell(VPC 밖)로는 topic 조작·produce 가 안 된다.
 
-`producer.py`·`consumer.py`·`admin.py`(토픽 CRUD) 가 IAM 인증 클라이언트(kafka-python-ng + aws-msk-iam-sasl-signer).
+`producer.py`·`consumer.py`·`admin.py`(토픽 CRUD) 가 IAM 인증 클라이언트(kafka-python-ng 2.2+ 내장 AWS_MSK_IAM + botocore).
 
 ---
 
@@ -52,21 +52,27 @@ aws kafka get-bootstrap-brokers --region $R --cluster-arn "$CA" \
 - **포트 9098 = IAM SASL**. 9092(plaintext)·9094(TLS)·9096(SCRAM)와 구분.
 - **SG self-inbound 9098 필요**: 클라이언트 EC2 와 MSK 가 같은 SG 를 쓰거나, MSK SG 가 클라이언트 SG 로부터 9098 을 허용해야 한다. **이걸 빠뜨리면 연결 타임아웃** — 가장 흔한 MSK 실패.
 
-## Producer / Consumer (VPC 내 EC2)
+## Producer / Consumer / Admin (VPC 내 EC2) [검증됨: admin→produce→consume 왕복]
 
 ```bash
-# EC2 에서
-sudo dnf install -y python3-pip java-11
-pip install kafka-python-ng aws-msk-iam-sasl-signer-python
-export BOOTSTRAP="boot-xxxx...:9098" TOPIC=lab-topic AWS_REGION=ap-northeast-2
-python3 producer.py    # 10건 발행
-python3 consumer.py    # earliest 부터 소비
+# EC2 에서 (SSM Session Manager 로 접속)
+sudo dnf install -y python3-pip
+pip3 install kafka-python-ng botocore    # ★ botocore 가 IAM 인증에 필수 (서명 라이브러리는 불필요)
+export BOOTSTRAP="boot-xxxx...:9098" TOPIC=orders
+export AWS_REGION=ap-northeast-2 AWS_DEFAULT_REGION=ap-northeast-2   # ★ 둘 다 (아래 함정)
+python3 admin.py create orders 6   # 토픽 6파티션
+python3 producer.py                # 10건 발행
+python3 consumer.py                # earliest 부터 10건 소비
 ```
 EC2 instance profile 에 MSK IAM 권한 필요:
 ```json
 {"Effect":"Allow","Action":["kafka-cluster:Connect","kafka-cluster:*Topic*","kafka-cluster:WriteData","kafka-cluster:ReadData","kafka-cluster:AlterGroup","kafka-cluster:DescribeGroup"],"Resource":"*"}
 ```
-Serverless 는 **토픽 자동 생성 활성**이 기본이라 producer 가 첫 발행 시 토픽을 만든다. provisioned 는 `kafka-topics.sh --create` 로 미리.
+Serverless 는 **토픽 자동 생성 활성**이 기본이라 producer 가 첫 발행 시 토픽을 만든다. 파티션 수를 지정하려면 `admin.py create`.
+
+> ### ★ IAM 인증 함정 2가지 (실검증 중 발견)
+> 1. **`kafka-python-ng 2.2+` 는 `sasl_mechanism="AWS_MSK_IAM"` 을 내장**(`kafka/sasl/msk.py`). 예전 블로그의 `aws-msk-iam-sasl-signer` + `AbstractTokenProvider`/`sasl_oauth_token_provider` 방식은 이 버전에서 **import 부터 실패**(`No module named 'kafka.sasl.oauth'`). botocore 만 있으면 된다.
+> 2. **botocore 가 리전을 못 찾으면 `NoBrokersAvailable`** 로 죽는다(TCP 는 되는데 IAM 서명이 리전 없이 안 됨). instance profile 이 있어도 `region: None` 이면 실패 — `AWS_DEFAULT_REGION` 을 명시하라. `AWS_REGION` 만으론 botocore 가 못 읽는 경우가 있다.
 
 ## 소비 측: Lambda ESM / EC2 Consumer
 
