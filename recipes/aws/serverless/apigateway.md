@@ -215,6 +215,61 @@ curl -s "https://$API.execute-api.$R.amazonaws.com/v1/inventory?item=balance"
 ```
 채점이 하는 방식: `aws apigateway get-rest-apis --query items[].name` 로 이름 확인 → 도메인 조립 → curl.
 
+## Terraform [검증됨: apply→curl(1000/100/403)→destroy]
+
+`terraform-apigw/main.tf` — REST API + DynamoDB 직접통합(VTL) + 시드 + stage 를 한 스택으로. 2025 inventory 를 통째로 재현. CLI 로 리소스/메서드/통합/배포를 하나씩 거는 것보다 훨씬 안정적이다(순서·의존성 자동).
+
+```bash
+cd terraform-apigw
+terraform init && terraform apply -auto-approve
+URL=$(terraform output -raw url)
+curl -s "$URL?item=balance"   # 1000
+curl -s -o /dev/null -w '%{http_code}\n' "$URL?item=mysecret9"   # 403
+terraform destroy -auto-approve
+```
+핵심 패턴:
+```hcl
+resource "aws_api_gateway_integration" "ddb" {
+  type                    = "AWS"          # AWS_PROXY 아님(직접통합)
+  integration_http_method = "POST"         # DDB 호출은 POST
+  uri                     = "arn:aws:apigateway:${var.region}:dynamodb:action/GetItem"
+  credentials             = aws_iam_role.agw.arn
+  request_templates = { "application/json" = <<VTL
+#set($item = $input.params('item'))
+#if($item.startsWith("mysecret"))
+#set($context.responseOverride.status = 403)
+{}
+#else
+{ "TableName": "${aws_dynamodb_table.inv.name}", "Key": { "name": { "S": "$item" } } }
+#end
+VTL
+  }
+}
+resource "aws_api_gateway_integration_response" "ok" {
+  response_templates = { "application/json" = "$input.path('$.Item.value.N')" }  # raw 출력
+  depends_on = [aws_api_gateway_integration.ddb]
+}
+```
+- **v6 부터 stage 는 `aws_api_gateway_stage` 로 분리** — `aws_api_gateway_deployment` 의 `stage_name` 은 deprecated.
+- **deployment `triggers`** 에 통합 해시를 넣어야 설정 변경 시 재배포된다. 없으면 옛 버전이 응답.
+- `aws_dynamodb_table_item` 으로 시드까지 TF 안에서. (많은 데이터는 별도 스크립트)
+- VTL 을 heredoc 으로 인라인 — `${...}` 는 TF 보간이라 DDB 테이블명 주입에 그대로 쓴다(VTL `$input` 은 `$` 라 충돌 없음).
+
+## Console 팁
+
+- **콘솔이 압도적으로 편한 곳**: REST API 는 리소스·메서드·통합·매핑템플릿·배포가 CLI 로 6~8단계인데, 콘솔은 "Create resource → Create method → Integration type 선택 → 매핑 템플릿 편집 → Deploy" 클릭 흐름이다. **VTL 편집기에 문법 힌트**가 있어 CLI 보다 실수가 준다.
+- **Test 버튼**: 메서드 콘솔의 Test 로 배포 없이 통합·VTL 을 즉석 실행. `$input`/`$context` 값을 로그로 보여줘 매핑 디버깅이 빠르다.
+- **Stages → SDK/Export**: OpenAPI 로 export/import 가능. 과제가 스펙을 주면 import.
+- 대회 팁: **직접통합+VTL 은 콘솔로 만들고**, 완성 후 `get-export` 로 스펙을 뽑아 재현성 확보. 순수 CLI 는 매핑 템플릿 이스케이프가 지옥이다.
+
+## 참고 문서
+
+- REST API 개발자 가이드: https://docs.aws.amazon.com/apigateway/latest/developerguide/
+- AWS service 통합(매핑 템플릿): https://docs.aws.amazon.com/apigateway/latest/developerguide/integrating-api-with-aws-services-dynamodb.html
+- VTL 레퍼런스: https://docs.aws.amazon.com/apigateway/latest/developerguide/api-gateway-mapping-template-reference.html
+- Terraform `aws_api_gateway_integration`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/api_gateway_integration
+- Terraform v6 stage 마이그레이션: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/guides/version-6-upgrade
+
 ## 함정
 
 - **AWS 직접통합은 `--integration-http-method POST`** — GET API 여도 백엔드는 POST. 이거 틀리면 500.
