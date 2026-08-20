@@ -82,6 +82,42 @@ aws kinesisanalyticsv2 describe-application --region $R --application-name lab-f
 ```
 채점은 보통 노트북에서 쿼리 결과가 나오는지 + 싱크(S3)에 데이터가 쌓이는지 본다.
 
+## Terraform
+
+```hcl
+resource "aws_kinesisanalyticsv2_application" "studio" {
+  name                   = "lab-flink-studio"
+  runtime_environment    = "ZEPPELIN-FLINK-3_0"
+  application_mode       = "INTERACTIVE"
+  service_execution_role = aws_iam_role.flink.arn
+  application_configuration {
+    flink_application_configuration {
+      parallelism_configuration {
+        configuration_type = "CUSTOM"
+        parallelism        = 1
+        parallelism_per_kpu = 1
+      }
+    }
+    # zeppelin + Glue 카탈로그는 리소스 스키마가 길다 — 콘솔/CLI 가 실용적.
+  }
+}
+```
+Studio 는 노트북 SQL 을 콘솔(Zeppelin UI)에서 작성하므로 TF 로 앱만 만들고 SQL 은 UI. 대회에선 CLI(README 상단) 또는 콘솔이 낫다.
+
+## Console 팁
+
+- **Studio 노트북 = 콘솔 필수**: "Open in Apache Zeppelin" → 문단에 `%flink.ssql` 로 SQL 붙여 실행. CLI 로 SQL 실행 불가. `notebook-*.sql` 을 문단별로 복붙.
+- **결과 시각화**: Zeppelin 이 SELECT 결과를 표·차트로. 윈도우 집계가 실시간 갱신되는 걸 눈으로.
+- **Deploy as application**: 노트북을 상시 실행 앱으로 승격(INTERACTIVE→streaming). 단 가이드가 "노트북 SQL" 을 요구하면 노트북 그대로.
+- **소스/싱크 커넥터**: Studio 에 Kinesis/MSK/S3 커넥터 JAR 이 기본 포함. 추가 커넥터는 S3 에서 로드.
+
+## 참고 문서
+
+- Managed Flink: https://docs.aws.amazon.com/managed-flink/latest/java/
+- Studio 노트북: https://docs.aws.amazon.com/managed-flink/latest/java/how-notebook.html
+- Flink SQL 윈도우: https://nightlies.apache.org/flink/flink-docs-stable/docs/dev/table/sql/queries/window-tvf/
+- Terraform `aws_kinesisanalyticsv2_application`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesisanalyticsv2_application
+
 ## 함정
 
 - **INTERACTIVE 모드 + ZEPPELIN 런타임** 이어야 노트북 SQL 이다. `FLINK-1_x` 는 JAR 배포용(가이드 금지).

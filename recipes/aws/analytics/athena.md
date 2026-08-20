@@ -87,6 +87,38 @@ aws athena get-query-execution --region $R --query-execution-id $QID \
   --query 'QueryExecution.[Status.State,Statistics.DataScannedInBytes]' --output text
 ```
 
+## Terraform [검증됨: pipeline TF 로 workgroup/DB → click 5 쿼리]
+
+`../terraform-pipeline/main.tf` 에 workgroup + Glue DB 포함(검증). 테이블은 DDL 을 `null_resource`+로컬 exec 보다 **콘솔/CLI 로 CREATE** 하는 게 낫다(projection 문자열 이스케이프 회피). workgroup 만 TF 로:
+
+```hcl
+resource "aws_athena_workgroup" "wg" {
+  name          = "lab"
+  force_destroy = true
+  configuration {
+    result_configuration { output_location = "s3://${aws_s3_bucket.b.id}/athena-results/" }
+    enforce_workgroup_configuration = true   # 쿼리가 결과 위치를 못 바꾸게
+  }
+}
+resource "aws_glue_catalog_database" "db" { name = "lab_db" }
+# 테이블: aws_glue_catalog_table 로도 가능하나 projection 은 parameters 맵이 길다.
+# 대회에선 workgroup+DB 는 TF, 테이블 CREATE 는 CLI 가 실용적.
+```
+
+## Console 팁
+
+- **쿼리 편집기**: 결과 위치를 한 번 설정하면 이후 쿼리에 안 넣어도 된다. 쿼리 히스토리·저장된 쿼리가 남아 재실행 빠름.
+- **테이블 생성 마법사**: S3 경로·형식·파티션을 폼으로 → DDL 자동 생성. projection 설정도 UI. 손으로 짜는 DDL 이스케이프 실수를 없앤다.
+- **쿼리 결과 재사용**: 같은 쿼리 캐시(최대 7일)로 스캔 비용 0. 반복 검증에 유용.
+- Glue 카탈로그와 공유 — 콘솔에서 테이블 스키마를 Glue 쪽에서도 편집 가능.
+
+## 참고 문서
+
+- Athena 사용 설명서: https://docs.aws.amazon.com/athena/latest/ug/
+- Partition projection: https://docs.aws.amazon.com/athena/latest/ug/partition-projection.html
+- CTAS: https://docs.aws.amazon.com/athena/latest/ug/ctas.html
+- Terraform `aws_athena_workgroup`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/athena_workgroup
+
 ## 함정
 
 - **결과 위치(OutputLocation) 필수** — workgroup 에 기본값 없으면 매 쿼리에 지정. 없으면 실패.

@@ -88,6 +88,37 @@ aws kafka get-bootstrap-brokers --region $R --cluster-arn "$CA" --query 'Bootstr
 # 실제 produce/consume 은 VPC 내 EC2 에서 producer.py/consumer.py 로.
 ```
 
+## Terraform
+
+```hcl
+resource "aws_msk_serverless_cluster" "c" {
+  cluster_name = "lab-msk"
+  vpc_config {
+    subnet_ids         = [var.subnet_a, var.subnet_b]
+    security_group_ids = [var.sg]
+  }
+  client_authentication {
+    sasl { iam { enabled = true } }
+  }
+}
+# provisioned 는 aws_msk_cluster (broker 수/타입/EBS 지정)
+```
+Serverless 는 `aws_msk_serverless_cluster`, provisioned 는 `aws_msk_cluster`. 생성 ~15분(Serverless)이라 apply 대기 김.
+
+## Console 팁
+
+- **클러스터 생성 마법사**: Serverless/Provisioned 선택, VPC·서브넷·인증(IAM/SASL/TLS)을 폼으로. 부트스트랩·SG self-inbound 안내가 나와 실수 감소.
+- **클라이언트 정보 보기**: 클러스터 콘솔의 "View client information" 이 부트스트랩 문자열(포트별)을 전부 보여준다.
+- **MSK Connect**: 커넥터(S3 sink 등)를 콘솔 폼으로. Kafka Connect 를 직접 운영 안 함.
+- 토픽·소비는 **VPC 내 EC2 필수**(콘솔로 토픽 조작 불가) — README 상단 admin.py.
+
+## 참고 문서
+
+- MSK 개발자 가이드: https://docs.aws.amazon.com/msk/latest/developerguide/
+- IAM 액세스 제어: https://docs.aws.amazon.com/msk/latest/developerguide/iam-access-control.html
+- Serverless: https://docs.aws.amazon.com/msk/latest/developerguide/serverless.html
+- Terraform `aws_msk_serverless_cluster`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/msk_serverless_cluster
+
 ## 함정
 
 - **VPC 내부 전용** — CloudShell(VPC 밖) 로 topic·produce 불가. 클라이언트 EC2 를 VPC 안에.

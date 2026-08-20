@@ -93,6 +93,47 @@ aws glue get-job-run --region $R --job-name lab-etl --run-id "$RUN" --query 'Job
 aws s3 ls s3://$BUCKET/parquet/ --recursive
 ```
 
+## Terraform [validate 통과]
+
+```hcl
+resource "aws_glue_catalog_database" "db" { name = "lab_db" }
+resource "aws_glue_crawler" "c" {
+  name          = "lab-crawler"
+  role          = aws_iam_role.glue.arn
+  database_name = aws_glue_catalog_database.db.name
+  s3_target { path = "s3://bucket/events/" }
+  # schedule = "cron(0 * * * ? *)"  # 주기 실행
+}
+resource "aws_glue_job" "j" {
+  name         = "lab-job"
+  role_arn     = aws_iam_role.glue.arn
+  glue_version = "4.0"
+  command {
+    script_location = "s3://bucket/scripts/etl.py"
+    python_version  = "3"
+  }
+  number_of_workers = 2
+  worker_type       = "G.1X"
+  default_arguments = { "--SRC" = "s3://bucket/events/", "--DST" = "s3://bucket/parquet/" }
+}
+```
+crawler·job 은 CLI 로 실검증(위). TF 는 스택 관리용. 스크립트는 `aws_s3_object` 로 함께 올린다.
+
+## Console 팁
+
+- **Glue Studio(Visual ETL)**: 노드(source→transform→target)를 드래그로 연결하면 PySpark 스크립트 자동 생성. 조인·집계·필터를 코드 없이. 생성된 스크립트를 `etl_*.py` 로 저장해 재현.
+- **크롤러 실행·스키마 확인**: 콘솔에서 crawler Run → 생성된 테이블 스키마를 즉시 확인. 해시 붙은 테이블명도 UI 에서 바로 보임.
+- **Job 실행 모니터링**: Run 탭에서 각 실행의 DPU·시간·에러. CloudWatch 로그 링크.
+- **Data Quality**: Studio 에서 DQ 규칙(룰셋)을 UI 로 추가.
+
+## 참고 문서
+
+- Glue 개발자 가이드: https://docs.aws.amazon.com/glue/latest/dg/
+- 크롤러: https://docs.aws.amazon.com/glue/latest/dg/add-crawler.html
+- Glue Studio: https://docs.aws.amazon.com/glue/latest/ug/
+- Terraform `aws_glue_crawler`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_crawler
+- Terraform `aws_glue_job`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/glue_job
+
 ## 함정
 
 - **crawler 는 시간이 걸린다**(1~3분). 채점 대기와 안 맞으면 미리 돌려 카탈로그를 채워둬라.

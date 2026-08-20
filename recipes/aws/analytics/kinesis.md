@@ -111,6 +111,57 @@ aws firehose describe-delivery-stream --region $R --delivery-stream-name lab-fir
 aws s3 ls s3://$BUCKET/events/ --recursive    # 적재 확인
 ```
 
+## Terraform [검증됨: 전 구간 apply→발행→Athena click 5→destroy]
+
+`terraform-pipeline/main.tf` — Kinesis→Firehose(동적 파티셔닝)→S3 + Athena workgroup/DB 를 한 스택으로. CLI 로 role·정책·Firehose JSON 을 조립하는 것보다 훨씬 안정적. **`analytics/` 최고의 시작점**(파이프라인 전체를 한 번에).
+
+```bash
+cd terraform-pipeline
+terraform init && terraform apply -auto-approve
+STREAM=$(terraform output -raw stream)
+for i in 1 2 3; do aws kinesis put-record --region ap-northeast-2 --stream-name $STREAM \
+  --partition-key p$i --data "$(echo '{"event_type":"click","dt":"2026-08-20"}'|base64)"; done
+# 60초 버퍼 후 s3 + athena (README athena.md)
+terraform destroy -auto-approve
+```
+핵심 패턴:
+```hcl
+resource "aws_kinesis_firehose_delivery_stream" "fh" {
+  destination = "extended_s3"
+  kinesis_source_configuration { kinesis_stream_arn = ..., role_arn = ... }
+  extended_s3_configuration {
+    buffering_interval = 60
+    prefix             = "events/dt=!{partitionKeyFromQuery:dt}/"
+    dynamic_partitioning_configuration { enabled = "true" }
+    processing_configuration {
+      enabled = "true"
+      processors {
+        type = "MetadataExtraction"
+        parameters { parameter_name = "JsonParsingEngine"      parameter_value = "JQ-1.6" }
+        parameters { parameter_name = "MetadataExtractionQuery" parameter_value = "{dt:.dt}" }
+      }
+    }
+  }
+}
+```
+- **CLI 의 `DynamicPartitioningConfiguration` 키명 함정이 TF 엔 없다** — `dynamic_partitioning_configuration` 블록.
+- Parquet 변환: `data_format_conversion_configuration` 블록(Glue 테이블 스키마 참조).
+- Lambda 변환: `processors { type = "Lambda" ... LambdaArn }`.
+
+## Console 팁
+
+- **Firehose 생성 마법사**: source(Kinesis/Direct PUT)·destination·동적 파티셔닝·변환을 단계 폼으로. JQ 쿼리·prefix 를 예제와 함께 보여줘 CLI JSON 조립보다 안전.
+- **Test with demo data**: Firehose 콘솔이 샘플 데이터를 발행해 S3 도착까지 테스트해준다.
+- **Kinesis 모니터링**: 스트림 콘솔의 IncomingRecords/IteratorAge 그래프로 소비 지연 확인.
+- **Data Viewer**: 스트림 콘솔에서 샤드의 실제 레코드를 브라우저로 열람(base64 자동 디코딩).
+
+## 참고 문서
+
+- Kinesis Data Streams: https://docs.aws.amazon.com/streams/latest/dev/
+- Firehose 동적 파티셔닝: https://docs.aws.amazon.com/firehose/latest/dev/dynamic-partitioning.html
+- Firehose 데이터 변환: https://docs.aws.amazon.com/firehose/latest/dev/data-transformation.html
+- Terraform `aws_kinesis_firehose_delivery_stream`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/kinesis_firehose_delivery_stream
+
 ## 함정
 
 - **Firehose 는 즉시 배달 안 한다.** 버퍼(크기 or 시간) 조건 충족까지 대기. 동적 파티셔닝이면 최소 60초. 채점 시 이걸 명시하거나 미리 발행.
