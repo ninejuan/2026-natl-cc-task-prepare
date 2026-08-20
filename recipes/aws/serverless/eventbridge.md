@@ -132,6 +132,58 @@ aws pipes describe-pipe --region $R --name lab-pipe --query '[Name,CurrentState]
 
 "~를 감지하면" = Rule. "매일 9시" / "N분마다" = Scheduler. (구형 `put-rule --schedule-expression` 도 되지만 Scheduler 가 신형·권장)
 
+## Terraform [검증됨: Scheduler→SQS apply/destroy]
+
+`terraform-messaging/main.tf` 에 Scheduler→SQS 가 포함(검증). Rule/Pipes 도 TF 로:
+
+```hcl
+# Scheduler (검증됨)
+resource "aws_scheduler_schedule" "s" {
+  flexible_time_window { mode = "OFF" }
+  schedule_expression = "rate(5 minutes)"
+  target {
+    arn      = aws_sqs_queue.q.arn
+    role_arn = aws_iam_role.sched.arn   # Scheduler 는 role 필수
+  }
+}
+# Rule (이벤트 패턴)
+resource "aws_cloudwatch_event_rule" "r" {          # EventBridge = cloudwatch_event_*
+  event_pattern = jsonencode({ source = ["aws.ec2"], "detail-type" = ["AWS API Call via CloudTrail"] })
+}
+resource "aws_cloudwatch_event_target" "t" {
+  rule = aws_cloudwatch_event_rule.r.name
+  arn  = aws_lambda_function.fn.arn
+}
+resource "aws_lambda_permission" "eb" {              # Lambda 타깃은 permission 필수
+  action = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.fn.function_name
+  principal = "events.amazonaws.com"
+  source_arn = aws_cloudwatch_event_rule.r.arn
+}
+# Pipes
+resource "aws_pipes_pipe" "p" {
+  role_arn = aws_iam_role.pipe.arn
+  source   = aws_sqs_queue.src.arn
+  target   = aws_sns_topic.tgt.arn
+}
+```
+> ⚠️ TF 에서 EventBridge Rule 은 **`aws_cloudwatch_event_rule`**(옛 CloudWatch Events 이름 유지). `aws_eventbridge_*` 아님. Scheduler·Pipes 는 `aws_scheduler_schedule`·`aws_pipes_pipe`.
+
+## Console 팁
+
+- **Rule 이벤트 패턴 빌더**: 콘솔이 이벤트 소스·타입을 드롭다운으로 주고 **샘플 이벤트로 패턴 매칭을 테스트**해준다. JSON 패턴을 손으로 짜다 틀리는 걸 막는다.
+- **Scheduler**: cron/rate 를 폼으로 + "다음 10개 실행 시각" 미리보기. flexible window·타임존 설정도 클릭.
+- **Pipes**: source→filter→enrichment→target 을 단계별 화면으로. 필터 패턴을 샘플로 테스트.
+- **Sandbox**: EventBridge 콘솔의 "Send events" 로 커스텀 이벤트를 즉석 발행해 rule 을 검증.
+
+## 참고 문서
+
+- EventBridge 사용 설명서: https://docs.aws.amazon.com/eventbridge/latest/userguide/
+- 이벤트 패턴: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-event-patterns.html
+- Scheduler: https://docs.aws.amazon.com/scheduler/latest/UserGuide/
+- Pipes: https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-pipes.html
+- Terraform `aws_scheduler_schedule`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/scheduler_schedule
+
 ## 함정
 
 - **CloudTrail 없으면 API Call 이벤트가 안 온다.** governance 문제의 숨은 전제.

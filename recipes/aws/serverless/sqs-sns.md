@@ -81,9 +81,47 @@ aws sns get-subscription-attributes --region $R --subscription-arn "$SUB" \
   --query Attributes.FilterPolicy --output text
 ```
 
+## Terraform [검증됨: apply→SNS filter/scheduler/FIFO/DLQ→destroy]
+
+`terraform-messaging/main.tf` — SQS+DLQ+FIFO+SNS(SQS구독+filter)+Scheduler 를 한 스택으로. JSON-in-JSON 이스케이프 없이 `jsonencode()` 로 깔끔하다.
+
+```hcl
+resource "aws_sqs_queue" "main" {
+  redrive_policy = jsonencode({ deadLetterTargetArn = aws_sqs_queue.dlq.arn, maxReceiveCount = 3 })
+}
+resource "aws_sqs_queue" "fifo" {
+  name                        = "x.fifo"      # .fifo 접미어 필수
+  fifo_queue                  = true
+  content_based_deduplication = true
+}
+resource "aws_sns_topic_subscription" "sub" {
+  topic_arn     = aws_sns_topic.t.arn
+  protocol      = "sqs"
+  endpoint      = aws_sqs_queue.main.arn
+  filter_policy = jsonencode({ type = ["order"] })
+}
+# ★ SNS→SQS 는 큐 리소스 정책이 SNS 를 허용해야 실제 전달됨 (aws_sqs_queue_policy)
+```
+CLI 의 JSON-in-JSON redrive 이스케이프 지옥을 `jsonencode()` 가 없앤다. 2과제 메시지 큐 모듈은 TF 가 훨씬 낫다.
+
+## Console 팁
+
+- **SQS→Lambda 트리거**: 큐 콘솔 "Lambda triggers" 에서 함수 연결. ESM 설정(배치·필터)이 폼.
+- **SNS 구독 필터**: 구독 편집 화면에서 filter policy 를 JSON 으로. "message attributes" vs "message body" 스코프를 라디오로 선택 — CLI 보다 실수 적다.
+- **DLQ redrive**: 콘솔에서 DLQ 지정 + "redrive" 버튼으로 DLQ→원큐 재처리(운영). CLI 는 `start-message-move-task`.
+- **Dead-letter queue redrive 모니터**: 큐 콘솔에서 DLQ 로 간 메시지 수를 바로 본다.
+
+## 참고 문서
+
+- SQS 개발자 가이드: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/
+- SNS 메시지 필터링: https://docs.aws.amazon.com/sns/latest/dg/sns-message-filtering.html
+- SQS FIFO: https://docs.aws.amazon.com/AWSSimpleQueueService/latest/SQSDeveloperGuide/FIFO-queues.html
+- Terraform `aws_sns_topic_subscription`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sns_topic_subscription
+- Terraform `aws_sqs_queue`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue
+
 ## 함정
 
-- **DLQ redrive 는 JSON-in-JSON** — 이스케이프 실수가 흔하다. python 으로 만들어라.
+- **DLQ redrive 는 JSON-in-JSON** — CLI 는 이스케이프 실수가 흔하다. python 이나 **TF `jsonencode()`** 로.
 - **FIFO 는 `.fifo` 접미사 + MessageGroupId** 둘 다 필수.
 - **SNS→SQS 전달 안 됨** — 큐 리소스 정책이 SNS 를 허용하는지 확인. 콘솔 구독은 자동으로 붙지만 CLI 는 수동일 수 있다.
 - **VisibilityTimeout < 처리시간** 이면 메시지가 중복 처리된다. Lambda ESM 은 함수 타임아웃의 6배 이상 권장.
