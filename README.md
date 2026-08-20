@@ -59,9 +59,66 @@ export R=ap-northeast-2    # 해당 항목/모듈이 지정한 리전
 | SAML/OIDC SSO, AWS 콘솔 로그인 연동 | [`cncf/keycloak/`](recipes/cncf/keycloak/) |
 | Helm 설치·values 디버깅·rollback | [`cncf/helm/`](recipes/cncf/helm/) |
 
-## 아직 없음
+### AWS — Serverless → [`recipes/aws/serverless/`](recipes/aws/serverless/)
 
-2과제 모듈 플레이북(Client VPN, RDS Connection, MSK, Managed Flink, VPC Lattice, Step Functions, Network Firewall 등)과 AWS 서비스별 스니펫은 아직 작성하지 않았다. 필요한 것부터 채운다.
+| 문구 키워드 | 위치 |
+|---|---|
+| Lambda, Python API, ESM, Function URL, ALB target | [`serverless/lambda.md`](recipes/aws/serverless/lambda.md) + [`lambda/`](recipes/aws/serverless/lambda/) 코드 8종 |
+| API Gateway, REST, **AWS Service Proxy 직접통합**, VTL, 403 | [`serverless/apigateway.md`](recipes/aws/serverless/apigateway.md) + [`vtl/`](recipes/aws/serverless/apigateway/vtl/) |
+| Step Functions, State Machine, 워크플로우, SDK 직접통합 | [`serverless/stepfunctions/`](recipes/aws/serverless/stepfunctions/) ASL 5종 |
+| EventBridge, Rule/Scheduler/Pipes, 이벤트 감지 | [`serverless/eventbridge.md`](recipes/aws/serverless/eventbridge.md) |
+| SQS/SNS, 메시지 큐, FIFO, DLQ, fan-out | [`serverless/sqs-sns.md`](recipes/aws/serverless/sqs-sns.md) |
+
+### AWS — Data Analytics → [`recipes/aws/analytics/`](recipes/aws/analytics/)
+
+| 문구 키워드 | 위치 |
+|---|---|
+| 실시간 데이터, 스트리밍, Kinesis, Firehose, 클릭스트림 | [`analytics/kinesis.md`](recipes/aws/analytics/kinesis.md) + [`kinesis/`](recipes/aws/analytics/kinesis/) |
+| Athena, S3 SQL 쿼리, partition projection, CTAS | [`analytics/athena.md`](recipes/aws/analytics/athena.md) + [`athena/queries/`](recipes/aws/analytics/athena/queries/) |
+| Glue, 스키마 자동발견, ETL, 카탈로그 | [`analytics/glue/`](recipes/aws/analytics/glue/) |
+| Managed Flink, 실시간 분석, Notebook SQL | [`analytics/managed-flink/`](recipes/aws/analytics/managed-flink/) 노트북 4종 |
+| MSK, Kafka, Producer/Consumer | [`analytics/msk/`](recipes/aws/analytics/msk/) |
+
+### AWS — DNS/CDN (1과제 추가 최다) → [`recipes/aws/tier1/`](recipes/aws/tier1/)
+
+| 문구 키워드 | 위치 |
+|---|---|
+| Route53, split-view, NS 위임, 라우팅 정책, 헬스체크 | [`tier1/route53.md`](recipes/aws/tier1/route53.md) |
+| CloudFront, OAC, VPC Origin, behavior, Functions | [`tier1/cloudfront.md`](recipes/aws/tier1/cloudfront.md) + [`functions/`](recipes/aws/tier1/cloudfront/functions/) |
+| ACM, HTTPS 인증서, 커스텀 도메인 | [`tier1/acm.md`](recipes/aws/tier1/acm.md) |
+
+### AWS — 조립 블록 → [`recipes/aws/tier2/`](recipes/aws/tier2/)
+
+| 문구 키워드 | 위치 |
+|---|---|
+| DynamoDB, GSI/LSI, TTL, Streams, PITR, 트랜잭션 | [`tier2/dynamodb.md`](recipes/aws/tier2/dynamodb.md) |
+| S3, 정적 호스팅, Access Point, 버전관리, 정책 | [`tier2/s3.md`](recipes/aws/tier2/s3.md) |
+| ECR, 이미지 스캔, 태그 불변, 라이프사이클 | [`tier2/ecr.md`](recipes/aws/tier2/ecr.md) |
+| ECS, Fargate, Task Definition, CloudMap, FireLens | [`tier2/ecs.md`](recipes/aws/tier2/ecs.md) |
+| WAF, 공격 차단, rate limit, managed rule | [`tier2/waf.md`](recipes/aws/tier2/waf.md) |
+
+### AWS — 그 외 서비스 → [`recipes/aws/tier3/`](recipes/aws/tier3/)
+
+| 문구 키워드 | 위치 |
+|---|---|
+| CI/CD, CodeBuild(로컬 Docker 없이 이미지), CodePipeline | [`tier3/code-series/`](recipes/aws/tier3/code-series/) |
+| 서비스 디스커버리, Cloud Map | [`tier3/cloudmap.md`](recipes/aws/tier3/cloudmap.md) |
+| EFS, 파일시스템, Access Point, 공유 볼륨 | [`tier3/efs.md`](recipes/aws/tier3/efs.md) |
+| Amazon MQ, RabbitMQ, ActiveMQ, AMQP | [`tier3/mq/`](recipes/aws/tier3/mq/) |
+| Assume Role, External ID, SAML/IdC 연동, OIDC | [`tier3/iam-federation.md`](recipes/aws/tier3/iam-federation.md) |
+| Config, SSM, Parameter Store, 자동 복구 | [`tier3/config-ssm.md`](recipes/aws/tier3/config-ssm.md) |
+| CloudWatch, 대시보드, 알람, Log Insights, EMF | [`tier3/cloudwatch.md`](recipes/aws/tier3/cloudwatch.md) |
+| Secrets Manager, 시크릿 회전 | [`tier3/secretsmanager.md`](recipes/aws/tier3/secretsmanager.md) |
+| AWS Backup, 백업/복원 | [`tier3/backup.md`](recipes/aws/tier3/backup.md) |
+
+## 작업 방식 (CLI / Terraform / Console)
+
+각 AWS 카드는 세 경로를 제공한다:
+- **CLI(`aws`)** — 빠른 복붙. 현장 1순위.
+- **Terraform** — 재현·수정. 리소스 여러 개를 한 번에 만들 때. 실계정 apply 검증됨.
+- **Console 팁** — CLI/TF 로 까다로운 지점(콘솔이 빠른 것).
+
+카드 하단 `참고 문서`에 공식 문서 링크가 있다.
 
 ## 헬퍼
 

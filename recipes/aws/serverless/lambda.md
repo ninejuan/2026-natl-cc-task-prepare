@@ -164,9 +164,61 @@ aws lambda list-event-source-mappings --region "$R" --function-name lab-fn \
   --query 'EventSourceMappings[].[State,BatchSize,EventSourceArn]' --output text
 ```
 
+## Terraform [검증됨: apply→invoke 200→destroy]
+
+`terraform-lambda/main.tf` — Lambda + IAM role + DynamoDB(GSI) + env 를 한 번에. `archive_file` 로 `lambda/crud-booking/handler.py` 를 그대로 패키징. 리소스 여러 개를 묶어 만들 때 CLI 보다 이쪽이 낫다.
+
+```bash
+cd terraform-lambda
+terraform init && terraform apply -auto-approve
+aws lambda invoke --region ap-northeast-2 --function-name lab-tf-book --cli-binary-format raw-in-base64-out \
+  --payload '{"httpMethod":"POST","path":"/v1/book","body":"{\"client_id\":\"C9\",\"username\":\"TF\",\"email\":\"t@f.com\",\"concert_name\":\"x\"}"}' /tmp/o.json && cat /tmp/o.json
+terraform destroy -auto-approve
+```
+핵심 패턴:
+```hcl
+data "archive_file" "fn" {
+  type        = "zip"
+  source_file = "${path.module}/../lambda/crud-booking/handler.py"
+  output_path = "${path.module}/fn.zip"
+}
+resource "aws_lambda_function" "fn" {
+  filename         = data.archive_file.fn.output_path
+  source_code_hash = data.archive_file.fn.output_base64sha256   # 코드 바뀌면 자동 재배포
+  runtime          = "python3.13"
+  handler          = "handler.handler"
+  # ...
+}
+resource "aws_lambda_event_source_mapping" "sqs" {   # ESM 도 TF 로
+  event_source_arn                   = aws_sqs_queue.q.arn
+  function_name                      = aws_lambda_function.fn.arn
+  batch_size                         = 10
+  function_response_types            = ["ReportBatchItemFailures"]
+}
+```
+- **`source_code_hash`** 를 넣어야 코드 변경 시 재배포된다. 없으면 zip 이 바뀌어도 TF 가 모른다.
+- 디렉토리에 소스가 여러 파일이면 `source_file` 대신 `source_dir`.
+- 함수+ESM+큐+DDB 를 한 스택으로 = 2과제 모듈(생성·삭제 반복)에 유리.
+
+## Console 팁
+
+- **테스트 이벤트**: 함수 콘솔 → Test 탭. API GW/SQS/S3 이벤트 템플릿이 드롭다운에 있어 payload 를 손으로 안 짜도 된다. invoke 디버깅이 빠르다.
+- **CloudWatch Logs**: Monitor 탭 → View CloudWatch logs. 에러 스택트레이스를 바로 본다(`aws logs` 보다 빠름).
+- **레이어/VPC/동시성**: Configuration 탭에서 클릭 몇 번. CLI 로 JSON 만들기 번거로운 것들.
+- **ESM**: Configuration → Triggers 에서 SQS/DDB/Kinesis 추가. 필터·배치 설정이 폼으로 나와 실수가 준다.
+- 단 **함수 코드 자체는 콘솔 인라인 에디터**가 zip(의존성 포함) 배포를 못 한다 — 코드는 CLI/TF, 설정은 콘솔이 편하다.
+
+## 참고 문서
+
+- Lambda 개발자 가이드: https://docs.aws.amazon.com/lambda/latest/dg/
+- 지원 런타임(python3.13 등): https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html
+- Event source mapping: https://docs.aws.amazon.com/lambda/latest/dg/invocation-eventsourcemapping.html
+- Terraform `aws_lambda_function`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function
+- Terraform `aws_lambda_event_source_mapping`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_event_source_mapping
+
 ## 함정
 
-- **IAM 전파**: role 만들고 바로 `create-function` 하면 실패. `sleep 10`.
+- **IAM 전파**: role 만들고 바로 `create-function` 하면 실패. `sleep 10`. (TF 는 의존성으로 자동 처리)
 - **code/config 동시 갱신**: 각각 별도 명령 + `wait function-updated-v2` 사이에 둬라. `ResourceConflictException`.
 - **Function URL 403**: SCP 로 auth NONE 이 막힐 수 있다(위 케이스 C). org 계정이면 ALB/APIGW 로.
 - **VPC 붙이면 인터넷 차단**: NAT/endpoint 없으면 외부 호출 타임아웃.

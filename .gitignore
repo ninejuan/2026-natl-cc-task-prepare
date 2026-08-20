@@ -1,3 +1,8 @@
 .lab/
 __pycache__/
 *.pyc
+.terraform/
+*.tfstate
+*.tfstate.*
+.terraform.lock.hcl
+fn.zip
