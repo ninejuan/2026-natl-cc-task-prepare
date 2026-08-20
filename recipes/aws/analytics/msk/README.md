@@ -10,7 +10,7 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 
 **MSK 는 VPC 내부 서비스다.** 부트스트랩 브로커가 private 이라 **클라이언트(producer/consumer)도 같은 VPC 안 EC2** 에서 돌려야 한다. CloudShell(VPC 밖)로는 topic 조작·produce 가 안 된다.
 
-`producer.py`·`consumer.py`·`admin.py`(토픽 CRUD) 가 IAM 인증 클라이언트(kafka-python-ng 2.2+ 내장 AWS_MSK_IAM + botocore).
+`producer.py`·`consumer.py`·`admin.py`(토픽 CRUD) 가 IAM 인증 클라이언트. ★ **IAM 인증은 `aws-msk-iam-sasl-signer-python` + `OAUTHBEARER`**(실검증). `sasl_mechanism="AWS_MSK_IAM"` 내장 방식은 kafka-python-ng 2.2.3 에서 metadata 타임아웃으로 실패 → 세 파일 전부 signer/OAUTHBEARER 로 정정됨.
 
 ---
 

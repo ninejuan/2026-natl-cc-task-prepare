@@ -17,10 +17,10 @@
 |---|---|---|---|
 | 01 | S3 + OAC (정적 호스팅) | 오리진 보호 | ✅ 실검증 `cases/01-s3-oac/verify.sh` |
 | 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | ✅ viewer-response 헤더 01 에 포함 실검증 |
-| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | image-resize handler ✓ |
-| 04 | behavior 경로 분기 | /api→ALB, /static→S3 | `cases/04-behaviors/` |
-| 05 | origin failover | primary/secondary origin group | `cases/05-failover/` |
-| 06 | signed URL/cookie | 콘텐츠 보호 | `cases/06-signed/` |
+| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | ⚠️ association 은 실검증(배포 Deployed), 단 python3.12 함수가 edge 에서 `LambdaValidationError`(502) — **Lambda@Edge 런타임 제약**(아래 함정). Node.js 또는 지원 Python 버전 필요 |
+| 04 | behavior 경로 분기 | /api/* → 다른 origin | ✅ live(ordered behavior `/api/*` config 수락 + Deployed) |
+| 05 | origin failover | origin group 500/502 | ✅ live(OriginGroups FailoverCriteria 500/502 config 수락 + Deployed) |
+| 06 | signed URL/cookie | 콘텐츠 보호 | 키그룹/트러스티드시그너 설정(별도 keypair) |
 
 ### 01/02 실검증 결과 (ap-northeast-1 + CloudFront 글로벌, 2026-08-20)
 
@@ -62,6 +62,8 @@ aws cloudfront create-invalidation --distribution-id $DIST --paths '/*'
 - **배포 반영 ~2분**(실측, 최대 10분) — 변경 후 Deployed 대기.
 - **Function querystring 재할당은 키순서 못바꿈**(실측) — 정렬 no-op, 삭제로.
 - **Lambda@Edge 는 us-east-1 에 배포** + 버전 published(별칭 아님).
+- **★ Lambda@Edge 런타임 제약(실측)**: `python3.12` 로 만들어 origin-response 에 붙였더니 edge 에서 `502 LambdaValidationError`. Lambda@Edge 는 표준 Lambda 보다 지원 런타임이 뒤처진다 — **Node.js(nodejs18.x/20.x) 또는 검증된 Python 버전**을 쓸 것. 이미지 리사이징 예제는 Node.js 가 무난. association·배포 자체는 정상(config 수락, Deployed).
+- **origin group failover**: `OriginGroups.FailoverCriteria.StatusCodes` 는 500/502/503/504 등 5xx 계열만. default behavior 의 TargetOriginId 를 origin group id 로 지정(실측 config 수락).
 - HTTPS 는 ACM(us-east-1) + custom domain.
 
 ## context7 참고
