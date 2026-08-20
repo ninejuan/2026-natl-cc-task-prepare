@@ -40,9 +40,32 @@
 - **Function URL SCP 403**: org 계정에서 auth NONE 차단 가능.
 - **DDB 키 스키마 불일치**: 핸들러 PK(`pk`)와 테이블 PK(`booking_id`) 다르면 PutItem 이 조용히 실패(ESM 은 NotVisible 로 쌓임).
 
+## recipes/aws/analytics — 실계정 검증
+
+| 대상 | 결과 | 비고 |
+|---|---|---|
+| `kinesis.md` Data Stream (on-demand) | ✓ | ACTIVE, put/get-record |
+| `kinesis.md` Firehose→S3 동적 파티셔닝 | ✓ | `events/dt=2026-08-20/` 파티션 적재. **키명 `DynamicPartitioningConfiguration`** |
+| `athena.md` partition projection | ✓ | crawler 없이 CREATE TABLE → click 5건 집계 SUCCEEDED |
+| `glue/` Crawler | ✓ | S3 JSON 스캔 → 스키마(event_type/id)+파티션(dt) 자동발견, SUCCEEDED |
+| `glue/etl_json_to_parquet.py` | 문서 | 스크립트 제공(구문). job 실행은 DPU 비용 커서 미실행 |
+| `managed-flink/` Studio | ✓ | RUNNING, ZEPPELIN-FLINK-3_0, Glue 카탈로그 연결 확인 |
+| `managed-flink/notebook-*.sql` | 문서 | SQL 노트북 예제(Zeppelin UI 실행 필요, CLI 불가) |
+| `msk/` Serverless 클러스터 | ✓ | **~15분 내 ACTIVE**(provisioned보다 빠름), IAM SASL 부트스트랩 9098 확인 |
+| `msk/producer.py·consumer.py` | 문서 | IAM 인증 코드. produce/consume 은 VPC 내 EC2 필요(미실행) |
+
+**검증된 파이프라인**: Kinesis→Firehose→S3→Athena 전 구간(click 5건) + Glue crawler 스키마 자동발견.
+모든 analytics lab 삭제 완료(IAM 잔여 0, MSK DELETING).
+
+### 발견한 함정 (카드 반영)
+- Firehose `DynamicPartitioning` → `DynamicPartitioningConfiguration` (CLI 검증 에러).
+- Firehose 는 즉시 배달 안 함 — 동적 파티셔닝 시 버퍼 최소 60초.
+- MSK/Flink VPC 내부 전용, MSK SG self-inbound 9098 필수.
+
 ## 미검증 / 확인 필요
 
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
 - `lambda/image-resize` (Pillow 네이티브 의존성 — 실배포 시 아키텍처 wheel 확인 필요)
 - `apigateway/vtl/sns-publish-req`, `validate-transform-req` (문법만, 실 API 미검증)
+- `glue/etl_json_to_parquet.py` (Spark job 실행 — DPU 비용), `managed-flink` SQL 노트북(Zeppelin UI), `msk` produce/consume (VPC 내 EC2)
 - k8s/cncf 매니페스트 (오프라인 문법만)
