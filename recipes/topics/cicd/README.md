@@ -19,7 +19,7 @@
 |---|---|---|---|
 | 01 | GHA → ECR → ECS 롤링 | build→push→update-service | `cases/01-gha-ecs/` |
 | 02 | GHA → ArgoCD GitOps | manifest push → Argo sync | cncf/argocd |
-| 03 | GHA OIDC 인증(키 없이) | assume-role-with-web-identity | `cases/03-oidc/` |
+| 03 | GHA OIDC 인증(키 없이) | assume-role-with-web-identity | ✅ live(OIDC provider + role trust sub=repo:.../main 실측) |
 | 04 | CodeBuild 이미지 빌드(로컬 docker 없이) | buildspec | tier3/code-series ✓ |
 
 ## GHA OIDC (장기 키 없이 — 권장)

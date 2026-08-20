@@ -33,7 +33,7 @@ Service Network ──(association)── VPC          ← 이 VPC 안 클라이
 | # | 케이스 | 타깃 | 검증 |
 |---|---|---|---|
 | 01 | `cases/01-lambda-service/` | Lambda 타깃 서비스(최단 경로) | ✅ live (VPC assoc=ACTIVE·DNS 발급 실측: `verify-association.sh`) |
-| 02 | `cases/02-ec2-instance-target/` | EC2(INSTANCE) 타깃 + health check | 경로(고가 EC2) |
+| 02 | `cases/02-ec2-instance-target/` | EC2(INSTANCE) 타깃 + health check | ✅ live(nginx EC2 → listener 연결 후 HEALTHY 실측) |
 | 03 | `cases/03-path-header-routing/` | 경로·헤더 기반 rule 라우팅 | ✅ live(rule) |
 | 04 | `cases/04-weighted/` | 가중 라우팅(카나리) | ✅ live(rule) |
 | 05 | `cases/05-auth-policy/` | AWS_IAM auth policy(SigV4) | ✅ live |
@@ -74,6 +74,8 @@ aws vpc-lattice list-service-network-vpc-associations --region $R --query 'items
 - **rule priority 는 1~2000**(실측) — 초과 시 ValidationException. `default` rule 은 예외(99999).
 - **fixedResponse 는 statusCode 404·500 만**(실측) — 403/401/503 은 "not supported". 403 차단은 auth policy(케이스 05)로.
 - **VPC Lattice API 는 throttle 이 빡세다**(실측 — 연속 create 시 ThrottlingException 빈발). 스크립트에 create 사이 sleep + 재시도를 넣어라. 채점 3분 제약 안에서 여러 리소스 만들면 특히 주의.
+- **★ INSTANCE/IP 타깃 health check 는 TG 가 서비스 listener 에 연결돼야 동작**(실측) — 고아 target group 은 타깃이 `UNUSED / TargetGroupNotInUse` 로만 뜨고 health check 를 아예 안 한다. listener 로 forward 연결하면 그때 HEALTHY 판정 시작. (케이스 02 EC2 타깃 실검증: 연결 후 HEALTHY)
+- **INSTANCE 타깃 SG 는 Lattice link-local(169.254.171.0/24)+VPC CIDR 에서 health check 포트 허용** 필요.
 
 ## context7 참고 (최신 문법 확인)
 

@@ -17,9 +17,9 @@
 |---|---|---|---|---|
 | 01 | 대시보드(ECS/ALB 메트릭) | put-dashboard, ALB RequestCount·TargetResponseTime·5xx | tier3 ✓ | ✅ 실검증 `cases/01-dashboard-alarm/verify.sh` |
 | 02 | 알람 + SNS | put-metric-alarm, treat-missing-data | tier3 ✓ | ✅ 위와 동일 스크립트에 포함 |
-| 03 | 이상 탐지 알람 | ANOMALY_DETECTION_BAND | tier3 ✓ | 미작성(학습데이터 필요) |
-| 04 | Container Insights | ECS 클러스터 CPU/메모리 자동 메트릭 | `cases/04-container-insights/` | 미작성 |
-| 05 | composite alarm | 여러 알람 AND/OR | tier3 | 미작성 |
+| 03 | 이상 탐지 알람 | ANOMALY_DETECTION_BAND | tier3 ✓ | ✅ live(put-anomaly-detector + band alarm, ThresholdMetricId=ad1) |
+| 04 | Container Insights | ECS 클러스터 CPU/메모리 자동 메트릭 | `cases/04-container-insights/` | 클러스터 설정(--settings containerInsights=enabled) |
+| 05 | composite alarm | 여러 알람 AND/OR | tier3 | ✅ live(a1 OR a2 composite rule) |
 
 ### 01/02 실검증 결과 (ap-northeast-1, 2026-08-20)
 

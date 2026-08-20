@@ -31,8 +31,8 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 |---|---|---|---|
 | 01 | `cases/01-rds-proxy/` | RDS Proxy + Secrets | ✅ live(proxy available, TLS, SECRETS, cluster target) |
 | 02 | `cases/02-data-api/` | Aurora Serverless v2 + Data API | ✅ live(CREATE/INSERT/SELECT 왕복 + boto3 query.py) |
-| 03 | `cases/03-iam-auth/` | IAM DB 인증(토큰) | 스크립트 |
-| 04 | `cases/04-secrets-rotation/` | Secrets Manager + 회전 | 스크립트(managed secret 은 02 에서 확인) |
+| 03 | `cases/03-iam-auth/` | IAM DB 인증(토큰) | ✅ live(generate-db-auth-token → 368자 SigV4 서명 토큰). psql 접속은 in-VPC EC2 필요 |
+| 04 | `cases/04-secrets-rotation/` | Secrets Manager + 회전 | ✅ live(managed secret=02 확인, 수동 secret create/describe). Lambda 회전은 rotation-lambda 필요 |
 
 ## 개념 검증 (채점자 문체)
 

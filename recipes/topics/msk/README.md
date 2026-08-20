@@ -26,6 +26,7 @@
 
 ## 인증·연결 (실검증 함정 반영)
 
+- **★ MSK 는 VPC 에 DNS hostnames 활성 필수**(실측) — 안 켜면 create-cluster-v2 가 `BadRequestException: VPC ... doesn't have DNS hostnames enabled`. `aws ec2 modify-vpc-attribute --enable-dns-hostnames '{"Value":true}'` 선행.
 - **MSK Serverless 는 IAM SASL 강제**(포트 9098). `sasl_mechanism="AWS_MSK_IAM"`.
 - **kafka-python-ng 2.2+ 에 AWS_MSK_IAM 내장** — 별도 `aws-msk-iam-sasl-signer` 불필요(botocore 만).
 - **botocore region=None 이면 NoBrokersAvailable** — `AWS_DEFAULT_REGION` 환경변수 필수(실검증).

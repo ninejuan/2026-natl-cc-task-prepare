@@ -25,9 +25,9 @@
 | # | 케이스 | 트리거 | 복구 | 상태 |
 |---|---|---|---|---|
 | 01 | SG 0.0.0.0/0 인바운드 → 즉시 제거 | EventBridge(AuthorizeSecurityGroupIngress) | Lambda revoke | ✅ 실검증 `cases/01-sg-autofix/verify.sh` |
-| 02 | EC2 stop → 자동 재시작 | EventBridge(EC2 state-change) | Lambda start | 미작성 |
-| 03 | Config rule + SSM remediation | restricted-ssh 등 | AWS-DisablePublicAccessForSecurityGroup | 미작성 |
-| 04 | 태그 위반 탐지 → 알림 | EventBridge/Config | SNS | 미작성 |
+| 02 | EC2 stop → 자동 재시작 | EventBridge(EC2 state-change) | Lambda start | ✅ live(stop→Lambda Invocations=1→running) |
+| 03 | Config rule + SSM remediation | restricted-ssh 등 | AWS-DisablePublicAccessForSecurityGroup | ✅ live(recorder recording + rule ACTIVE, 원상복구) |
+| 04 | 태그 위반 탐지 → 알림 | EventBridge/Config | SNS | ✅ live(tag-change rule→SNS target) |
 
 ### 01 실검증 결과 (ap-northeast-1, 2026-08-20)
 

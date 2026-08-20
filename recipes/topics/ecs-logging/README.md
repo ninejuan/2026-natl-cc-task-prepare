@@ -24,7 +24,7 @@
 | # | 케이스 | 경로 | 기반 |
 |---|---|---|---|
 | 01 | awslogs → CloudWatch | `taskdefs/fargate-minimal.json` | tier2 ✓ |
-| 02 | FireLens → CloudWatch | `taskdefs/firelens-sidecar.json` | tier2 ✓ |
+| 02 | FireLens → CloudWatch | `taskdefs/firelens-sidecar.json` | ✅ live(앱 JSON 로그 → Fluent Bit → CW, ecs_task_arn 메타 부착 실측) |
 | 03 | FireLens → OpenSearch | `cases/03-firelens-opensearch/` | 신규 |
 | 04 | FireLens → S3 (아카이브) | `cases/04-firelens-s3/` | 신규 |
 
@@ -44,6 +44,9 @@ aws opensearch describe-domain --region $R --domain-name lab-logs --query 'Domai
 
 - **FireLens 는 log-router 사이드카가 essential** — 아니면 앱만 죽어도 로그 유실.
 - **task role vs execution role** — 앱이 로그를 보내는 게 아니라 로그드라이버(execution)가. OpenSearch 로 보내면 task role 에 `es:ESHttp*`.
+- **★ 사이드카(log-router)의 `awslogs` 드라이버 + `awslogs-create-group:true` 는 execution role 로 실행**(실측) — 기본 `AmazonECSTaskExecutionRolePolicy` 엔 `logs:CreateLogGroup` 이 없어서 task 가 `ResourceInitializationError ... AccessDeniedException: logs:CreateLogGroup` 로 STOPPED 된다. 해결: 로그그룹을 미리 만들거나 execution role 에 `logs:CreateLogGroup` 추가.
+- **★ FireLens 앱 로그의 CloudWatch 출력은 task role** 이 담당(cloudwatch output). task role 에 `logs:CreateLogGroup/Stream/PutLogEvents` 필요.
+- **`enable-ecs-log-metadata:true`** → 로그에 `ecs_cluster`/`ecs_task_arn`/`container_name` 자동 부착(실측 확인).
 - **awslogs 는 로그그룹 사전 생성** 또는 `awslogs-create-group=true`.
 - **OpenSearch 는 생성 ~15분 + 시간과금** — 준비 계정에선 도메인 실생성 주의. 채점은 미리 떠 있는 전제.
 - Logs Insights 쿼리는 `../../aws/tier3/cloudwatch/logs-insights.md` 15종 재사용.
