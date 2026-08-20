@@ -1,0 +1,17 @@
+## 응답 매핑: DynamoDB Query 결과(Items 배열)를 깔끔한 JSON 배열로 변환.
+## DynamoDB 의 {"S":..,"N":..} 형식을 벗겨 평범한 JSON 으로 재구성한다.
+#set($items = $input.path('$.Items'))
+{
+  "count": $input.path('$.Count'),
+  "items": [
+#foreach($item in $items)
+    {
+      "booking_id": "$item.booking_id.S",
+      "client_id": "$item.client_id.S",
+      "concert_name": "$item.concert_name.S",
+      "created_at": "$item.created_at.S"
+    }#if($foreach.hasNext),#end
+
+#end
+  ]
+}

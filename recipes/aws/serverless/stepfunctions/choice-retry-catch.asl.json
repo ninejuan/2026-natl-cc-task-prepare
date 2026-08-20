@@ -1,0 +1,62 @@
+{
+  "Comment": "Choice 분기 + Retry(지수백오프) + Catch(에러핸들링) 골격. amount 로 경로를 나눈다.",
+  "StartAt": "CheckAmount",
+  "States": {
+    "CheckAmount": {
+      "Type": "Choice",
+      "Choices": [
+        {
+          "Variable": "$.amount",
+          "NumericGreaterThanEquals": 10000,
+          "Next": "LargeOrder"
+        },
+        {
+          "And": [
+            { "Variable": "$.amount", "NumericGreaterThan": 0 },
+            { "Variable": "$.amount", "NumericLessThan": 10000 }
+          ],
+          "Next": "NormalOrder"
+        }
+      ],
+      "Default": "Reject"
+    },
+    "LargeOrder": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "lab-sfn-inv",
+        "Item": { "name": { "S.$": "States.Format('order-{}', $.id)" }, "value": { "N.$": "States.Format('{}', $.amount)" }, "tier": { "S": "large" } }
+      },
+      "Retry": [
+        {
+          "ErrorEquals": ["DynamoDB.ThrottlingException", "States.TaskFailed"],
+          "IntervalSeconds": 1,
+          "MaxAttempts": 3,
+          "BackoffRate": 2.0
+        }
+      ],
+      "Catch": [
+        {
+          "ErrorEquals": ["States.ALL"],
+          "ResultPath": "$.error",
+          "Next": "Reject"
+        }
+      ],
+      "End": true
+    },
+    "NormalOrder": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "lab-sfn-inv",
+        "Item": { "name": { "S.$": "States.Format('order-{}', $.id)" }, "value": { "N.$": "States.Format('{}', $.amount)" }, "tier": { "S": "normal" } }
+      },
+      "End": true
+    },
+    "Reject": {
+      "Type": "Fail",
+      "Error": "InvalidAmount",
+      "Cause": "amount 가 0 이하이거나 처리 실패"
+    }
+  }
+}

@@ -1,0 +1,6 @@
+## SNS Publish 직접통합. POST body 의 message 를 토픽으로 발행.
+## 통합: type=AWS, uri=arn:aws:apigateway:{R}:sns:action/Publish, POST
+## Content-Type application/x-www-form-urlencoded 로 SNS 에 전달된다.
+#set($msg = $input.path('$.message'))
+#set($subject = $input.path('$.subject'))
+Action=Publish&TopicArn=$util.urlEncode($stageVariables.topicArn)&Message=$util.urlEncode($msg)&Subject=$util.urlEncode($subject)

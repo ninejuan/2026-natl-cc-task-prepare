@@ -1,0 +1,9 @@
+## 응답 매핑: DynamoDB GetItem 결과에서 value.N 만 raw 로 출력 (큰따옴표 없이).
+## 항목이 없으면 404.
+#set($item = $input.path('$.Item'))
+#if(!$item || $item == "")
+#set($context.responseOverride.status = 404)
+Not Found
+#else
+$input.path('$.Item.value.N')
+#end

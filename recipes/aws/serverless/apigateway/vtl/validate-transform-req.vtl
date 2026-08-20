@@ -1,0 +1,17 @@
+## 요청 검증 + 변환: 필수 필드 확인, 값 정규화, context/stage 값 주입.
+## Lambda 로 넘기기 전에 API GW 레벨에서 거르는 패턴.
+#set($id = $input.path('$.client_id'))
+#if(!$id || $id == "")
+#set($context.responseOverride.status = 400)
+{"error": "client_id required"}
+#else
+{
+  "client_id": "$id",
+  "username": "$util.escapeJavaScript($input.path('$.username'))",
+  "source_ip": "$context.identity.sourceIp",
+  "request_id": "$context.requestId",
+  "stage": "$context.stage",
+  "received_at": "$context.requestTimeEpoch",
+  "raw": $input.json('$')
+}
+#end
