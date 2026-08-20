@@ -1,0 +1,18 @@
+{
+  "_desc": "EC2 실행 타입(Fargate 아님). bridge 네트워크 + 동적 포트 매핑(hostPort 0) + 리소스 예약.",
+  "_note": "requiresCompatibilities EC2. ALB 동적 포트 매핑은 hostPort 0(자동). Fargate 는 이 방식 불가.",
+  "family": "lab-td-ec2",
+  "networkMode": "bridge",
+  "requiresCompatibilities": ["EC2"],
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "public.ecr.aws/nginx/nginx:latest",
+      "essential": true,
+      "cpu": 128,
+      "memory": 256,
+      "memoryReservation": 128,
+      "portMappings": [{ "containerPort": 80, "hostPort": 0, "protocol": "tcp" }]
+    }
+  ]
+}

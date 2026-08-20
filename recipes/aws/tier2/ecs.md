@@ -10,6 +10,8 @@ EKS 대신 ECS 로 나올 수 있다(1과제 "ECS 혹은 EKS", 2025 logging/moni
 
 ---
 
+> 📎 **Task Definition 6종 모음**: `ecs/taskdefs/` (README.md 카탈로그) — fargate-minimal, healthcheck+dependsOn, firelens 사이드카, EFS 볼륨, secrets 주입, EC2 bridge+동적포트. 전부 `register-task-definition` 실검증.
+
 ## 케이스 A — Fargate cluster + taskdef + service [검증됨: task RUNNING]
 
 ```bash

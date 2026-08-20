@@ -1,0 +1,47 @@
+{
+  "_desc": "중앙집중 로깅(2025 logging 모듈). app 로그를 Fluent Bit 사이드카가 받아 CloudWatch 로.",
+  "_note": "log-router(사이드카)가 essential. awsfirelens 드라이버는 이 사이드카로 라우팅.",
+  "family": "lab-td-firelens",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "EXEC_ROLE",
+  "taskRoleArn": "TASK_ROLE",
+  "containerDefinitions": [
+    {
+      "name": "app",
+      "image": "public.ecr.aws/nginx/nginx:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 80 }],
+      "logConfiguration": {
+        "logDriver": "awsfirelens",
+        "options": {
+          "Name": "cloudwatch",
+          "region": "ap-northeast-2",
+          "log_group_name": "/ecs/app-firelens",
+          "auto_create_group": "true",
+          "log_stream_prefix": "app-"
+        }
+      }
+    },
+    {
+      "name": "log-router",
+      "image": "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable",
+      "essential": true,
+      "firelensConfiguration": {
+        "type": "fluentbit",
+        "options": { "enable-ecs-log-metadata": "true" }
+      },
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/firelens-router",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "router",
+          "awslogs-create-group": "true"
+        }
+      }
+    }
+  ]
+}

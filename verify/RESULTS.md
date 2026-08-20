@@ -137,6 +137,7 @@ tier3 lab 전량 정리.
 | tier3/cloudwatch/logs-insights.md (15종) | ✓ | `start-query`→`get-query-results` 14개 실행. error_pct=40, distinct=3, pct/avg 정확 |
 | tier3/iam/policy-documents.md | ✓ | identity 13종 Access Analyzer 통과, trust 9종 실제 `create-role` 통과 |
 | tier1/cloudfront/functions/ (7종) | ✓ | 전부 `test-function` 실행 검증. **querystring 재할당은 키 순서 못 바꿈**(정렬 no-op) → utm 삭제로 수정 |
+| tier2/ecs/taskdefs/ (6종) | ✓ | 6종 전부 `register-task-definition` 통과(fargate/healthcheck+dependsOn/firelens/EFS/secrets/EC2 bridge) |
 
 전량 정리 확인(DDB 테이블·로그그룹·WebACL·IPSet·test role·CFF 함수 0개 잔존).
 

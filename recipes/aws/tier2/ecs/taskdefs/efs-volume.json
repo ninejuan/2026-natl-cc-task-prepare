@@ -1,0 +1,30 @@
+{
+  "_desc": "EFS 공유 볼륨 마운트(File System security 모듈). access point + IAM + TLS.",
+  "_note": "FS_ID / AP_ID 를 실제 값으로. authorizationConfig.iam=ENABLED 면 taskRole 에 EFS 권한 필요.",
+  "family": "lab-td-efs",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "EXEC_ROLE",
+  "taskRoleArn": "TASK_ROLE",
+  "volumes": [
+    {
+      "name": "shared",
+      "efsVolumeConfiguration": {
+        "fileSystemId": "FS_ID",
+        "transitEncryption": "ENABLED",
+        "authorizationConfig": { "accessPointId": "AP_ID", "iam": "ENABLED" }
+      }
+    }
+  ],
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "public.ecr.aws/nginx/nginx:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 80 }],
+      "mountPoints": [{ "sourceVolume": "shared", "containerPath": "/usr/share/nginx/html", "readOnly": false }]
+    }
+  ]
+}

@@ -1,0 +1,30 @@
+{
+  "_desc": "컨테이너 헬스체크 + dependsOn(기동 순서). app 은 db 가 HEALTHY 된 뒤 시작.",
+  "family": "lab-td-health",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "EXEC_ROLE",
+  "containerDefinitions": [
+    {
+      "name": "db",
+      "image": "public.ecr.aws/docker/library/redis:7",
+      "essential": true,
+      "healthCheck": {
+        "command": ["CMD-SHELL", "redis-cli ping || exit 1"],
+        "interval": 10,
+        "timeout": 3,
+        "retries": 3,
+        "startPeriod": 10
+      }
+    },
+    {
+      "name": "app",
+      "image": "public.ecr.aws/nginx/nginx:latest",
+      "essential": true,
+      "dependsOn": [{ "containerName": "db", "condition": "HEALTHY" }],
+      "portMappings": [{ "containerPort": 80 }]
+    }
+  ]
+}
