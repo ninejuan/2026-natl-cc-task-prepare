@@ -95,6 +95,45 @@ aws ec2 authorize-security-group-ingress --region $R --group-id $SG --protocol t
 sleep 30; aws ec2 describe-security-groups --region $R --group-ids $SG --query 'SecurityGroups[0].IpPermissions|length(@)' --output text
 ```
 
+## Terraform
+
+```hcl
+# Parameter Store
+resource "aws_ssm_parameter" "p" {
+  name  = "/lab/app/table"
+  type  = "String"       # SecureString 이면 KMS 자동
+  value = "lab-table"
+}
+# governance: EventBridge rule → Lambda (권장)
+resource "aws_cloudwatch_event_rule" "sg" {
+  event_pattern = jsonencode({
+    source        = ["aws.ec2"]
+    "detail-type" = ["AWS API Call via CloudTrail"]
+    detail        = { eventName = ["AuthorizeSecurityGroupIngress"] }
+  })
+}
+# Config rule (recorder 있을 때)
+resource "aws_config_config_rule" "ssh" {
+  name   = "restricted-ssh"
+  source { owner = "AWS", source_identifier = "INCOMING_SSH_DISABLED" }
+}
+```
+> SecureString 값을 TF state 에 두면 평문 노출 — 대회용은 무방하나 실무는 `ignore_changes` 나 외부 관리.
+
+## Console 팁
+
+- **Parameter Store**: 계층 경로로 트리 탐색, SecureString KMS 키 선택, 이력 조회.
+- **Session Manager**: 콘솔에서 EC2 에 브라우저 셸(SSH 키·포트 불필요). Run Command 도 폼으로 대상·명령 지정.
+- **Config**: 규칙 카탈로그에서 managed rule 선택 + remediation(SSM 문서) 연결을 폼으로.
+- **Automation**: 문서 실행을 콘솔에서 파라미터 폼으로.
+
+## 참고 문서
+
+- Systems Manager 사용 설명서: https://docs.aws.amazon.com/systems-manager/latest/userguide/
+- Parameter Store: https://docs.aws.amazon.com/systems-manager/latest/userguide/systems-manager-parameter-store.html
+- Config remediation: https://docs.aws.amazon.com/config/latest/developerguide/remediation.html
+- Terraform `aws_ssm_parameter`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ssm_parameter
+
 ## 함정
 
 - **governance 는 EventBridge+Lambda 가 빠르다** — Config 는 평가 지연(수 분)으로 3분 채점에 불리.

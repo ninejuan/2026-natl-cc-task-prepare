@@ -67,6 +67,36 @@ aws mq describe-broker --region $R --broker-id $BROKER \
 # producer/consumer 왕복
 ```
 
+## Terraform
+
+```hcl
+resource "aws_mq_broker" "b" {
+  broker_name        = "lab-mq"
+  engine_type        = "RabbitMQ"
+  engine_version     = "3.13"
+  host_instance_type = "mq.m7g.large"   # RabbitMQ 최소. ActiveMQ 는 mq.t3.micro
+  deployment_mode    = "SINGLE_INSTANCE"
+  publicly_accessible = true            # 실전 VPC 내부면 false + subnet_ids + SG
+  user {
+    username = "admin"
+    password = "SkillsRabbit2026!"      # 12자+, 공백/쉼표 불가
+  }
+}
+```
+> 생성 ~5분(RabbitMQ), 비용 큼. apply 후 즉시 검증하고 destroy.
+
+## Console 팁
+
+- **브로커 생성 마법사**: 엔진(RabbitMQ/ActiveMQ)·인스턴스·배포모드·인증·네트워크를 단계 폼으로.
+- **RabbitMQ Management / ActiveMQ Console**: 브로커 콘솔 링크로 웹 관리 UI(큐·연결·메시지 조회).
+- **CloudWatch 통합**: 큐 깊이·연결 수 메트릭.
+
+## 참고 문서
+
+- Amazon MQ 개발자 가이드: https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/
+- RabbitMQ: https://docs.aws.amazon.com/amazon-mq/latest/developer-guide/rabbitmq.html
+- Terraform `aws_mq_broker`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/mq_broker
+
 ## 함정
 
 - **RabbitMQ 최소 m5.large/m7g.large** — t3.micro 는 BadRequest. ActiveMQ 만 t3.micro.

@@ -113,9 +113,53 @@ aws iam list-saml-providers --query 'SAMLProviderList[].Arn' --output text
 aws sso-admin list-permission-sets --instance-arn <idc> --output text
 ```
 
+## Terraform [role apply 검증됨]
+
+`terraform-iam/main.tf` — External ID assume role + 최소권한 + 세션 1시간. (assume 동작은 CLI 케이스 A 에서 검증)
+
+```hcl
+data "aws_iam_policy_document" "assume" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "AWS"
+      identifiers = ["arn:aws:iam::${data.aws_caller_identity.cur.account_id}:root"]
+    }
+    condition {
+      test     = "StringEquals"
+      variable = "sts:ExternalId"
+      values   = [var.external_id]   # 비번호 포함이면 var 로
+    }
+  }
+}
+resource "aws_iam_role" "audit" {
+  assume_role_policy   = data.aws_iam_policy_document.assume.json
+  max_session_duration = 3600
+}
+# SAML: aws_iam_saml_provider + Federated principal
+# OIDC: aws_iam_openid_connect_provider + sub 조건
+```
+- **`aws_iam_policy_document` 데이터 소스**가 JSON 이스케이프·중괄호 함정을 없앤다(zsh ARN 문제 회피).
+- IdC 는 `aws_ssoadmin_permission_set`·`aws_ssoadmin_account_assignment`. 단 외부 IdP 연동은 콘솔.
+
+## Console 팁
+
+- **역할 생성 마법사**: trusted entity(AWS account/SAML/OIDC/service)를 라디오로. External ID·세션 시간을 폼으로.
+- **IAM Identity Center**: 외부 IdP(Keycloak) 연동은 **콘솔 필수** — Settings → Identity source → External IdP → SAML metadata 업로드. permission set·account assignment 도 콘솔이 직관적.
+- **Policy simulator**: 만든 정책이 특정 액션을 허용/거부하는지 시뮬레이션. 최소권한 검증.
+- **Access Analyzer**: 외부 접근 가능 리소스를 자동 탐지.
+
+## 참고 문서
+
+- IAM 사용 설명서: https://docs.aws.amazon.com/IAM/latest/UserGuide/
+- External ID: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_create_for-user_externalid.html
+- SAML federation: https://docs.aws.amazon.com/IAM/latest/UserGuide/id_roles_providers_saml.html
+- IAM Identity Center: https://docs.aws.amazon.com/singlesignon/latest/userguide/
+- Terraform `aws_iam_role`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/iam_role
+
 ## 함정
 
-- **ARN 조립 zsh 함정** — `${ACCT}:root` 중괄호.
+- **ARN 조립 zsh 함정** — `${ACCT}:root` 중괄호. (TF `aws_iam_policy_document` 는 이 문제 없음)
 - **External ID 는 StringEquals 조건** — 대소문자 정확히. 비번호 포함되면 `$P`.
 - **최소권한 = Resource 특정** — `*` 쓰면 감점(`mark-self.sh --foul`).
 - **IdC 는 콘솔 활성화 선행** — CLI list-instances 가 비면 미활성. 외부 IdP 연동도 콘솔 SAML metadata 업로드가 핵심(CLI 불가 영역).

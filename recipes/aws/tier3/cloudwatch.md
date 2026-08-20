@@ -79,6 +79,51 @@ aws cloudwatch describe-alarms --region $R --query 'MetricAlarms[].[AlarmName,St
 aws logs describe-metric-filters --region $R --log-group-name /lab/app --query 'metricFilters[].filterName' --output text
 ```
 
+## Terraform
+
+```hcl
+resource "aws_cloudwatch_dashboard" "d" {
+  dashboard_name = "lab-dash"
+  dashboard_body = jsonencode({ widgets = [ { type = "metric", ... } ] })
+}
+resource "aws_cloudwatch_metric_alarm" "a" {
+  alarm_name          = "lab-alarm"
+  namespace           = "AWS/Lambda"
+  metric_name         = "Errors"
+  statistic           = "Sum"
+  period              = 60
+  evaluation_periods  = 1
+  threshold           = 5
+  comparison_operator = "GreaterThanThreshold"
+  treat_missing_data  = "notBreaching"
+  alarm_actions       = [aws_sns_topic.alerts.arn]
+}
+resource "aws_cloudwatch_log_metric_filter" "f" {
+  name           = "errors"
+  log_group_name = "/lab/app"
+  pattern        = "{$.level=\"ERROR\"}"
+  metric_transformation {
+    name      = "AppErrors"
+    namespace = "Lab"
+    value     = "1"
+  }
+}
+```
+
+## Console 팁
+
+- **대시보드 편집기**: 위젯을 드래그·리사이즈, 메트릭을 검색으로 추가. JSON 을 손으로 안 짜도 된다. 완성 후 "View/edit source" 로 JSON 추출.
+- **알람 생성 마법사**: 메트릭 선택 → 임계·기간 → SNS 액션 → 그래프 미리보기.
+- **Log Insights**: 쿼리 편집기 + 저장·공유. 샘플 쿼리 제공.
+- **Metrics explorer**: 태그·리소스별 메트릭 자동 대시보드.
+
+## 참고 문서
+
+- CloudWatch 사용 설명서: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/
+- Log Insights 쿼리: https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/CWL_QuerySyntax.html
+- EMF: https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/CloudWatch_Embedded_Metric_Format.html
+- Terraform `aws_cloudwatch_metric_alarm`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm
+
 ## 함정
 
 - **알람 데이터 없으면 INSUFFICIENT_DATA** — 대회 트래픽 부족 시. `treat-missing-data notBreaching` + 부하 생성으로 OK/ALARM 유도.

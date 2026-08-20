@@ -84,6 +84,46 @@ aws codepipeline get-pipeline-state --region $R --name lab-pipe --query 'stageSt
 ```
 빌드 실패 시 `phases[?phaseStatus==FAILED]` 로 어느 단계인지 → 그 phase 로그 확인.
 
+## Terraform
+
+```hcl
+resource "aws_codebuild_project" "b" {
+  name         = "lab-cb"
+  service_role = aws_iam_role.cb.arn
+  artifacts { type = "NO_ARTIFACTS" }
+  environment {
+    compute_type    = "BUILD_GENERAL1_SMALL"
+    image           = "aws/codebuild/amazonlinux2-x86_64-standard:5.0"
+    type            = "LINUX_CONTAINER"
+    privileged_mode = true   # ★ docker 빌드 필수
+    environment_variable {
+      name  = "ECR_URI"
+      value = "${data.aws_caller_identity.cur.account_id}.dkr.ecr.ap-northeast-2.amazonaws.com"
+    }
+  }
+  source {
+    type      = "S3"
+    location  = "${aws_s3_bucket.src.id}/src.zip"
+    buildspec = "buildspec.yml"
+  }
+}
+# CodePipeline: aws_codepipeline (source=CodeConnections, build=CodeBuild, deploy=ECS)
+```
+
+## Console 팁
+
+- **CodeBuild 프로젝트 마법사**: source(S3/GitHub/CodeCommit)·환경(privileged 체크박스)·buildspec 을 폼으로.
+- **CodeConnections**: 콘솔에서 GitHub 연결 생성 → **OAuth 팝업 승인**(CLI 로는 승인 불가, 이 단계만 콘솔).
+- **CodePipeline 마법사**: source→build→deploy 스테이지를 드래그로 구성. ECS/CodeDeploy 배포 액션 폼.
+- **빌드 로그**: 실시간 스트리밍 + phase 별 성공/실패 표시.
+
+## 참고 문서
+
+- CodeBuild 사용 설명서: https://docs.aws.amazon.com/codebuild/latest/userguide/
+- buildspec 레퍼런스: https://docs.aws.amazon.com/codebuild/latest/userguide/build-spec-ref.html
+- CodePipeline: https://docs.aws.amazon.com/codepipeline/latest/userguide/
+- Terraform `aws_codebuild_project`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/codebuild_project
+
 ## 함정
 
 - **privilegedMode:true** — docker 빌드에 필수. 없으면 데몬 연결 실패.

@@ -60,6 +60,42 @@ aws backup get-backup-plan --region $R --backup-plan-id $PLAN --query 'BackupPla
 aws backup list-recovery-points-by-backup-vault --region $R --backup-vault-name lab-vault --query 'length(RecoveryPoints)' --output text
 ```
 
+## Terraform
+
+```hcl
+resource "aws_backup_vault" "v" { name = "lab-vault" }
+resource "aws_backup_plan" "p" {
+  name = "lab-plan"
+  rule {
+    rule_name         = "daily"
+    target_vault_name = aws_backup_vault.v.name
+    schedule          = "cron(0 5 * * ? *)"
+    lifecycle { delete_after = 7 }
+  }
+}
+resource "aws_backup_selection" "s" {
+  name         = "tagged"
+  plan_id      = aws_backup_plan.p.id
+  iam_role_arn = aws_iam_role.backup.arn
+  selection_tag {
+    type  = "STRINGEQUALS"
+    key   = "Backup"
+    value = "yes"
+  }
+}
+```
+
+## Console 팁
+
+- **백업 플랜 마법사**: 스케줄·보존·전환(cold storage)을 폼으로 + 리소스 할당(태그/ARN).
+- **온디맨드 백업**: 리소스 콘솔(DynamoDB/RDS/EFS 등)에서 "Create backup" 바로.
+- **복원**: Vault → recovery point → Restore. 서비스별 복원 옵션을 폼으로(CLI 메타데이터 조립보다 쉬움).
+
+## 참고 문서
+
+- AWS Backup 개발자 가이드: https://docs.aws.amazon.com/aws-backup/latest/devguide/
+- Terraform `aws_backup_plan`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/backup_plan
+
 ## 함정
 
 - **selection role 필요** — `AWSBackupDefaultServiceRole` 또는 백업/복원 권한 role. 없으면 job 실패.

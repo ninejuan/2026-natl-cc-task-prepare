@@ -74,6 +74,50 @@ aws efs describe-mount-targets --region $R --file-system-id $FS --query 'MountTa
 # EC2 에서: mount 후 echo test > /mnt/efs/f && cat /mnt/efs/f
 ```
 
+## Terraform
+
+```hcl
+resource "aws_efs_file_system" "fs" {
+  encrypted = true
+  tags      = { Name = "lab-efs" }
+}
+resource "aws_efs_mount_target" "mt" {
+  for_each        = toset([var.subnet_a, var.subnet_b])
+  file_system_id  = aws_efs_file_system.fs.id
+  subnet_id       = each.value
+  security_groups = [var.sg]   # SG 가 노드/EC2 로부터 2049 허용해야
+}
+resource "aws_efs_access_point" "ap" {
+  file_system_id = aws_efs_file_system.fs.id
+  posix_user {
+    uid = 1000
+    gid = 1000
+  }
+  root_directory {
+    path = "/app"
+    creation_info {
+      owner_uid   = 1000
+      owner_gid   = 1000
+      permissions = "755"
+    }
+  }
+}
+resource "aws_efs_file_system_policy" "p" { ... }   # IAM 접근제어
+```
+
+## Console 팁
+
+- **파일시스템 생성 마법사**: VPC·mount target(AZ별)·성능/처리량 모드·암호화를 폼으로. mount target SG 를 여기서 지정.
+- **Access Point**: 콘솔에서 POSIX 사용자·루트 디렉토리를 폼으로. 테넌트 격리를 클릭으로.
+- **마운트 도우미**: 파일시스템 콘솔의 "Attach" 가 EC2 mount 명령(TLS·access point 옵션 포함)을 생성.
+
+## 참고 문서
+
+- EFS 사용 설명서: https://docs.aws.amazon.com/efs/latest/ug/
+- Access Point: https://docs.aws.amazon.com/efs/latest/ug/efs-access-points.html
+- IAM 정책: https://docs.aws.amazon.com/efs/latest/ug/iam-access-control-nfs-efs.html
+- Terraform `aws_efs_file_system`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/efs_file_system
+
 ## 함정
 
 - **mount target SG 2049(NFS)** — 노드/EC2 SG 로부터 허용 안 하면 마운트 타임아웃. 가장 흔한 EFS 실패.

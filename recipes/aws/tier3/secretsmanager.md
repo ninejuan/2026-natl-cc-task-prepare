@@ -55,6 +55,30 @@ aws secretsmanager get-secret-value --region $R --secret-id lab/db --query Secre
 aws secretsmanager get-resource-policy --region $R --secret-id lab/db --query ResourcePolicy --output text
 ```
 
+## Terraform
+
+```hcl
+resource "aws_secretsmanager_secret" "s" { name = "lab/db" }
+resource "aws_secretsmanager_secret_version" "v" {
+  secret_id     = aws_secretsmanager_secret.s.id
+  secret_string = jsonencode({ username = "admin", password = "S3cr3t!" })
+}
+# 회전: aws_secretsmanager_secret_rotation { rotation_lambda_arn, rotation_rules { automatically_after_days = 30 } }
+```
+> 랜덤 비밀번호는 `random_password` + `secret_version` 조합. state 에 평문이 남으니 주의(대회용은 무방).
+
+## Console 팁
+
+- **시크릿 생성 마법사**: 타입(RDS 자격증명/기타)·KMS 키·회전을 폼으로. RDS 선택 시 **관리형 회전 Lambda 를 자동 구성**(직접 안 짬).
+- **Retrieve secret value**: 콘솔에서 값을 바로 확인(권한 있으면).
+- **회전 설정**: Rotation 탭에서 주기·Lambda 를 클릭으로.
+
+## 참고 문서
+
+- Secrets Manager 사용 설명서: https://docs.aws.amazon.com/secretsmanager/latest/userguide/
+- 자동 회전: https://docs.aws.amazon.com/secretsmanager/latest/userguide/rotating-secrets.html
+- Terraform `aws_secretsmanager_secret`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/secretsmanager_secret
+
 ## 함정
 
 - **읽는 주체에 GetSecretValue + kms:Decrypt**(CMK 면).

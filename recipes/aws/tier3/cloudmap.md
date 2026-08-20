@@ -55,9 +55,42 @@ aws servicediscovery list-instances --region $R --service-id $SD --query 'Instan
 # VPC 내 EC2 에서: dig +short web.lab.local  또는  curl http://web.lab.local
 ```
 
+## Terraform
+
+```hcl
+resource "aws_service_discovery_private_dns_namespace" "ns" {
+  name = "lab.local"
+  vpc  = var.vpc_id
+}
+resource "aws_service_discovery_service" "web" {
+  name = "web"
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.ns.id
+    dns_records {
+      type = "A"
+      ttl  = 60
+    }
+  }
+  health_check_custom_config { failure_threshold = 1 }
+}
+# ECS 연동: aws_ecs_service.service_registries { registry_arn = aws_service_discovery_service.web.arn }
+```
+> TF 는 네임스페이스 비동기 생성을 자동으로 기다린다(CLI 는 operation 폴링 필요).
+
+## Console 팁
+
+- **네임스페이스/서비스 생성**: Cloud Map 콘솔에서 타입(DNS private/public/HTTP)·레코드를 폼으로.
+- **ECS 연동**: ECS 서비스 생성 마법사의 "Service discovery" 섹션에서 네임스페이스·서비스를 선택하면 자동 등록.
+- **등록된 인스턴스 조회**: 서비스 콘솔에서 현재 등록된 IP 목록.
+
+## 참고 문서
+
+- Cloud Map 개발자 가이드: https://docs.aws.amazon.com/cloud-map/latest/dg/
+- Terraform `aws_service_discovery_service`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/service_discovery_service
+
 ## 함정
 
-- **네임스페이스 생성은 비동기** — create → operation SUCCESS 대기 → NSID.
+- **네임스페이스 생성은 비동기** — create → operation SUCCESS 대기 → NSID. (TF 는 자동 대기)
 - **private DNS 는 VPC 연결** — 그 VPC 안에서만 해석.
 - **삭제 순서**: instance dereg → service 삭제 → namespace 삭제. service 남으면 namespace 삭제 실패.
 - **ECS 연결 시 health check custom** — `--health-check-custom-config FailureThreshold=1`. ECS 가 상태를 CloudMap 에 보고.
