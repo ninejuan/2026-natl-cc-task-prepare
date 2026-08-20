@@ -1,6 +1,5 @@
 [
   {
-    "_comment": "FireLens → S3 아카이브. 02-firelens-cw 와 VPC/역할/클러스터는 동일, app 컨테이너의 logConfiguration.options 만 S3 플러그인으로 교체. task role 에 s3:PutObject(대상 버킷) 필요.",
     "name": "app",
     "image": "public.ecr.aws/docker/library/busybox:latest",
     "essential": true,

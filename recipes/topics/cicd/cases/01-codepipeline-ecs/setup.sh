@@ -49,8 +49,11 @@ aws iam create-role --role-name lab-pipe-role --assume-role-policy-document \
 aws iam put-role-policy --role-name lab-pipe-role --policy-name p --policy-document \
   '{"Version":"2012-10-17","Statement":[{"Effect":"Allow","Action":["s3:*"],"Resource":["arn:aws:s3:::'$ART'","arn:aws:s3:::'$ART'/*"]},{"Effect":"Allow","Action":["codecommit:GetBranch","codecommit:GetCommit","codecommit:GetRepository","codecommit:UploadArchive","codecommit:GetUploadArchiveStatus","codecommit:CancelUploadArchive","codecommit:GitPull"],"Resource":"*"},{"Effect":"Allow","Action":["codebuild:StartBuild","codebuild:BatchGetBuilds"],"Resource":"*"},{"Effect":"Allow","Action":["ecs:*","iam:PassRole"],"Resource":"*"}]}' 2>/dev/null || true
 sleep 10
-sed "s|ROLE_ARN|$(aws iam get-role --role-name lab-pipe-role --query Role.Arn --output text)|; s|ARTIFACT_BUCKET|$ART|" \
-  $HERE/pipeline.json > /tmp/pipeline-filled.json
+# ★ pipeline.json 의 _comment/_usage 주석키는 제거해야 함(안 그러면 create-pipeline 이 Unknown parameter).
+PROLE_ARN=$(aws iam get-role --role-name lab-pipe-role --query Role.Arn --output text)
+sed "s|ROLE_ARN|$PROLE_ARN|; s|ARTIFACT_BUCKET|$ART|" $HERE/pipeline.json | \
+  python3 -c 'import json,sys; d=json.load(sys.stdin); json.dump({k:v for k,v in d.items() if not k.startswith("_")}, sys.stdout)' \
+  > /tmp/pipeline-filled.json
 aws codepipeline create-pipeline --region $R --cli-input-json file:///tmp/pipeline-filled.json >/dev/null
 
 echo "파이프라인 생성됨(자동 실행). 검증:"

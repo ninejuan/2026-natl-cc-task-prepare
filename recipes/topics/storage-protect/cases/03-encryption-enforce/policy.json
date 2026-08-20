@@ -1,6 +1,4 @@
 {
-  "_comment": "SSE-KMS 암호화 강제 버킷 정책. 암호화 없는/다른 키 업로드를 Deny. BUCKET/KMS_KEY_ARN 치환.",
-  "_usage": "aws s3api put-bucket-policy --bucket BUCKET --policy file://policy.json",
   "Version": "2012-10-17",
   "Statement": [
     {
