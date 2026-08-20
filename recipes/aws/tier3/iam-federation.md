@@ -10,6 +10,8 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 
 ---
 
+> 📎 **정책 문서 모음**: `iam/policy-documents.md` — trust policy(EC2/Lambda/ECS/External ID/MFA/SAML/OIDC-GitHub/OIDC-IRSA) + permission policy(S3/DDB/KMS/Secrets/ECR/태그·리전 조건/명시적 Deny/PassRole) + permission boundary. identity 정책은 Access Analyzer, trust 정책은 실제 create-role 로 검증.
+
 ## ★ 케이스 A — Assume Role + External ID [검증됨]
 
 2026 후보 audit-role("동일 계정 principal 이 External ID 와 함께 assume, 없거나 틀리면 거부, 최대 세션 1시간, 최소권한, 와일드카드 금지").

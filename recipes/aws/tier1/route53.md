@@ -61,6 +61,8 @@ aws route53 change-resource-record-sets --hosted-zone-id $PARENT --change-batch 
 ```
 2024 는 상위 계정(`cloudhrdk*.com`)에 NS 를 GitHub Issue 로 등록하면 운영진이 위임하는 형태였다. **잘못된 NS 를 주면 위임 실패** — `get-hosted-zone` 의 NS 4개를 정확히.
 
+> 📎 **레코드 셋 예시 모음**: `route53/record-sets.md` — A/AAAA/CNAME/MX/TXT/NS/Alias(ALB·CloudFront) 기본 레코드 + weighted/failover/latency/geolocation/multivalue/geoproximity 정책 레코드를 그대로 `--change-batch` 에 넣는 JSON 으로.
+
 ## 케이스 C~ — 라우팅 정책 (전종 검증됨)
 
 같은 이름 + 다른 `SetIdentifier` 로 정책 레코드를 만든다.

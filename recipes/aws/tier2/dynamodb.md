@@ -67,6 +67,8 @@ aws dynamodb update-item --region $R --table-name lab-ddb \
   --expression-attribute-values '{":d":{"N":"100"}}'
 ```
 
+> 📎 **PartiQL(SQL 호환) 15종 모음**: `dynamodb/partiql.sql` — PK/SK Query, begins_with, BETWEEN, GSI, IN, INSERT/UPDATE/DELETE, 원자적 카운터, 조건부 쓰기까지 전부 실검증. `aws dynamodb execute-statement --statement "..."` 로 복붙.
+
 ## 케이스 D — 쿼리 (GSI / LSI) [검증됨]
 
 ```bash

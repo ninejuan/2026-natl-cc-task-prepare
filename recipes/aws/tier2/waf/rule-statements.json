@@ -1,0 +1,119 @@
+{
+  "_comment": "WAFv2 rule statement 예시 모음. 각 항목을 create-web-acl 의 --rules 배열 원소로 쓴다. 12개 전부 실제 create-web-acl 로 검증됨.",
+  "_usage": "Priority 는 유일해야 하고, managed rule 은 OverrideAction / custom rule 은 Action. VisibilityConfig 는 전 룰 필수(여기선 생략표기, 실제로는 넣어야 함).",
+  "_gotcha_base64": "★ CLI(--rules file://) 로 넣을 때 ByteMatchStatement 의 SearchString 은 base64 인코딩 필수(blob 타입). 평문이면 'Invalid base64: /login' 에러. 콘솔·Terraform 은 평문. 예: '/login' → 'L2xvZ2lu'. 아래 예시는 가독성 위해 평문으로 뒀으니 CLI 사용 시 base64 로 바꿀 것.",
+
+  "1_managed_common": {
+    "_desc": "AWS 관리형 Common 룰셋 (광범위 공격 패턴). 가장 기본.",
+    "Name": "common", "Priority": 1,
+    "OverrideAction": {"None": {}},
+    "Statement": {"ManagedRuleGroupStatement": {"VendorName": "AWS", "Name": "AWSManagedRulesCommonRuleSet"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "common"}
+  },
+
+  "2_managed_sqli": {
+    "_desc": "SQL injection 전용 관리형 룰셋.",
+    "Name": "sqli", "Priority": 2,
+    "OverrideAction": {"None": {}},
+    "Statement": {"ManagedRuleGroupStatement": {"VendorName": "AWS", "Name": "AWSManagedRulesSQLiRuleSet"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "sqli"}
+  },
+
+  "3_managed_badinputs": {
+    "_desc": "알려진 악성 입력(취약점 스캐너 등) 관리형 룰셋.",
+    "Name": "badinputs", "Priority": 3,
+    "OverrideAction": {"None": {}},
+    "Statement": {"ManagedRuleGroupStatement": {"VendorName": "AWS", "Name": "AWSManagedRulesKnownBadInputsRuleSet"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "badinputs"}
+  },
+
+  "4_managed_with_exclusion": {
+    "_desc": "관리형 룰셋에서 특정 룰만 Count 로 완화(오탐 회피). RuleActionOverrides 로 개별 룰 오버라이드.",
+    "Name": "common-tuned", "Priority": 4,
+    "OverrideAction": {"None": {}},
+    "Statement": {"ManagedRuleGroupStatement": {
+      "VendorName": "AWS", "Name": "AWSManagedRulesCommonRuleSet",
+      "RuleActionOverrides": [{"Name": "SizeRestrictions_BODY", "ActionToUse": {"Count": {}}}]
+    }},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "common-tuned"}
+  },
+
+  "5_rate_limit_ip": {
+    "_desc": "IP별 rate limit. 60초 창에서 100건 초과 시 커스텀 403. 과제 단골.",
+    "Name": "ratelimit", "Priority": 5,
+    "Action": {"Block": {"CustomResponse": {"ResponseCode": 403, "CustomResponseBodyKey": "blocked"}}},
+    "Statement": {"RateBasedStatement": {"Limit": 100, "EvaluationWindowSec": 60, "AggregateKeyType": "IP"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "ratelimit"}
+  },
+
+  "6_rate_limit_by_path": {
+    "_desc": "특정 경로(/login)에만 rate limit. ScopeDownStatement 로 대상 좁힘.",
+    "Name": "ratelimit-login", "Priority": 6,
+    "Action": {"Block": {}},
+    "Statement": {"RateBasedStatement": {
+      "Limit": 50, "EvaluationWindowSec": 60, "AggregateKeyType": "IP",
+      "ScopeDownStatement": {"ByteMatchStatement": {
+        "SearchString": "/login", "FieldToMatch": {"UriPath": {}},
+        "TextTransformations": [{"Priority": 0, "Type": "NONE"}],
+        "PositionalConstraint": "STARTS_WITH"}}
+    }},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "ratelimit-login"}
+  },
+
+  "7_ipset_block": {
+    "_desc": "IP set 참조로 차단(사전에 create-ip-set 필요). ARN 을 채운다.",
+    "Name": "ipblock", "Priority": 7,
+    "Action": {"Block": {}},
+    "Statement": {"IPSetReferenceStatement": {"ARN": "arn:aws:wafv2:REGION:ACCT:regional/ipset/lab-block/ID"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "ipblock"}
+  },
+
+  "8_geo_allow_kr_only": {
+    "_desc": "한국(KR) 외 전부 차단. NotStatement + GeoMatch.",
+    "Name": "kr-only", "Priority": 8,
+    "Action": {"Block": {}},
+    "Statement": {"NotStatement": {"Statement": {"GeoMatchStatement": {"CountryCodes": ["KR"]}}}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "kr-only"}
+  },
+
+  "9_geo_block_list": {
+    "_desc": "특정 국가 목록 차단.",
+    "Name": "geo-block", "Priority": 9,
+    "Action": {"Block": {}},
+    "Statement": {"GeoMatchStatement": {"CountryCodes": ["CN", "RU", "KP"]}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "geo-block"}
+  },
+
+  "10_header_match": {
+    "_desc": "특정 헤더 값 차단(예: 특정 User-Agent). ByteMatch + SingleHeader.",
+    "Name": "ua-block", "Priority": 10,
+    "Action": {"Block": {}},
+    "Statement": {"ByteMatchStatement": {
+      "SearchString": "BadBot", "FieldToMatch": {"SingleHeader": {"Name": "user-agent"}},
+      "TextTransformations": [{"Priority": 0, "Type": "LOWERCASE"}],
+      "PositionalConstraint": "CONTAINS"}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "ua-block"}
+  },
+
+  "11_and_combo": {
+    "_desc": "AND 조합: 특정 경로 AND 특정 국가 아닐 때만 차단. AndStatement.",
+    "Name": "path-and-geo", "Priority": 11,
+    "Action": {"Block": {}},
+    "Statement": {"AndStatement": {"Statements": [
+      {"ByteMatchStatement": {"SearchString": "/admin", "FieldToMatch": {"UriPath": {}},
+        "TextTransformations": [{"Priority": 0, "Type": "NONE"}], "PositionalConstraint": "STARTS_WITH"}},
+      {"NotStatement": {"Statement": {"GeoMatchStatement": {"CountryCodes": ["KR"]}}}}
+    ]}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "path-and-geo"}
+  },
+
+  "12_size_constraint": {
+    "_desc": "요청 본문 크기 초과 차단(대용량 POST 방어).",
+    "Name": "body-size", "Priority": 12,
+    "Action": {"Block": {}},
+    "Statement": {"SizeConstraintStatement": {
+      "FieldToMatch": {"Body": {}}, "ComparisonOperator": "GT", "Size": 8192,
+      "TextTransformations": [{"Priority": 0, "Type": "NONE"}]}},
+    "VisibilityConfig": {"SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "body-size"}
+  }
+}

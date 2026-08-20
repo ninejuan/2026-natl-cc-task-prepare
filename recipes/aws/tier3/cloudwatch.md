@@ -52,6 +52,8 @@ aws logs put-metric-filter --region $R --log-group-name /lab/app \
 ```
 JSON 로그의 `level=ERROR` 를 세어 `Lab/AppErrors` 메트릭으로. 이 메트릭에 알람 → 앱 에러 알림.
 
+> 📎 **Logs Insights 쿼리 15종 모음**: `cloudwatch/logs-insights.md` — 필터/집계/시계열(bin)/백분위(pct)/정규식 parse/IP Top/5xx 상세/에러율/distinct/Lambda REPORT·콜드스타트/VPC Flow REJECT 까지 전부 실검증. Athena.md 식 복붙 컬렉션.
+
 ## 케이스 D — Log Insights 쿼리
 
 ```bash

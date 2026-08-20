@@ -50,6 +50,8 @@ aws wafv2 associate-web-acl --region $R \
 # CloudFront: associate 대신 distribution config 의 WebACLId 에 ACL ARN. us-east-1 scope.
 ```
 
+> 📎 **rule statement 12종 모음**: `waf/rule-statements.json` — managed(Common/SQLi/BadInputs/오버라이드), rate limit(IP/경로별), IP set, geo(허용/차단), 헤더매칭, AND 조합, size 제약까지 전부 실제 create-web-acl 로 검증. **CLI 주의**: ByteMatch `SearchString` 은 base64 인코딩 필수(콘솔·TF 는 평문).
+
 ## 케이스 C — IP set / geo match
 
 ```bash
