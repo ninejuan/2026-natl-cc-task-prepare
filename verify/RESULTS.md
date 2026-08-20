@@ -94,6 +94,21 @@
 
 tier1 lab 정리: Route53 zone/HC 삭제 완료. CloudFront 는 disable→반영 대기 후 삭제 예정(S3 포함).
 
+## recipes/aws/tier2 — 실계정 검증
+
+| 대상 | 결과 | 비고 |
+|---|---|---|
+| dynamodb GSI+LSI+Stream+TTL | ✓ | 한 테이블에 다 구성 |
+| dynamodb PITR·트랜잭션·조건부·GSI/LSI 쿼리 | ✓ | PITR ENABLED(재시도), transact-write, ConditionalCheckFailed 차단, GSI/LSI query |
+| s3 버전관리·SSE-KMS·라이프사이클 | ✓ | 2버전, aws:kms, expire 룰 |
+| s3 Access Point·정적호스팅 | ✓ | AP 객체접근(v2), 웹호스팅 "Cloud Skills 2026" |
+| ecr 스캔·태그불변·라이프사이클 | ✓ | IMMUTABLE·scanOnPush·2룰 (push 제외) |
+| ecs Fargate+CloudMap | ✓ | task RUNNING, CloudMap task IP 자동등록(10.0.139.110), awslogs 스트림 |
+| waf managed+rate+custom403 | ✓ | WebACL REGIONAL + 3룰 생성 |
+
+tier2 lab 전량 정리(DDB·S3 버전버킷·ECS·CloudMap·WAF·역할). 
+S3 버전관리 버킷은 버전+삭제마커 제거 후 rb (카드 정리 절차 반영).
+
 ## 미검증 / 확인 필요
 
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
