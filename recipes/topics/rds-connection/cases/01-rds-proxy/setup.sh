@@ -12,7 +12,7 @@ aws rds create-db-cluster --region $R --db-cluster-identifier lab-proxy-db \
   --engine aurora-postgresql --engine-mode provisioned \
   --database-name lab --master-username labadmin --manage-master-user-password \
   --serverless-v2-scaling-configuration MinCapacity=0,MaxCapacity=1 \
-  --db-subnet-group-name lab-proxy-sng --vpc-security-group-ids $SG --skip-final-snapshot >/dev/null
+  --db-subnet-group-name lab-proxy-sng --vpc-security-group-ids $SG >/dev/null
 aws rds create-db-instance --region $R --db-instance-identifier lab-proxy-db-1 \
   --db-cluster-identifier lab-proxy-db --engine aurora-postgresql --db-instance-class db.serverless >/dev/null
 aws rds wait db-cluster-available --region $R --db-cluster-identifier lab-proxy-db

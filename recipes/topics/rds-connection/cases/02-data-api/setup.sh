@@ -10,21 +10,24 @@ aws rds create-db-subnet-group --region $R --db-subnet-group-name lab-aurora-sng
   --db-subnet-group-description lab --subnet-ids $SUB1 $SUB2 >/dev/null
 
 # Aurora PostgreSQL Serverless v2 + Data API + Secrets 자동관리
+# ★ --skip-final-snapshot 은 create 옵션이 아니다(delete-db-cluster 전용). create 에 넣으면 Unknown options.
 aws rds create-db-cluster --region $R --db-cluster-identifier lab-aurora \
   --engine aurora-postgresql --engine-mode provisioned \
   --database-name lab --master-username labadmin \
   --manage-master-user-password \
   --enable-http-endpoint \
   --serverless-v2-scaling-configuration MinCapacity=0,MaxCapacity=1 \
-  --db-subnet-group-name lab-aurora-sng \
-  --skip-final-snapshot >/dev/null
+  --db-subnet-group-name lab-aurora-sng >/dev/null
 # 인스턴스(db.serverless) 하나
 aws rds create-db-instance --region $R --db-instance-identifier lab-aurora-1 \
   --db-cluster-identifier lab-aurora --engine aurora-postgresql \
   --db-instance-class db.serverless >/dev/null
 
-echo "클러스터 available 대기(~10분)..."
+echo "클러스터 + 인스턴스 available 대기(~10분)..."
 aws rds wait db-cluster-available --region $R --db-cluster-identifier lab-aurora
+# ★ Data API 는 인스턴스가 available 이어야 동작. cluster-available 만으론 부족
+#   (인스턴스 creating 중이면 DatabaseNotFoundException "Cannot find DBInstance in DBCluster").
+aws rds wait db-instance-available --region $R --db-instance-identifier lab-aurora-1
 
 CARN=$(aws rds describe-db-clusters --region $R --db-cluster-identifier lab-aurora --query 'DBClusters[0].DBClusterArn' --output text)
 SARN=$(aws rds describe-db-clusters --region $R --db-cluster-identifier lab-aurora --query 'DBClusters[0].MasterUserSecret.SecretArn' --output text)
