@@ -180,6 +180,24 @@ tier3 lab 전량 정리.
 - endpoint 삭제 후 ACM 인증서 삭제 ~1분 지연(in use).
 - association 전이면 과금 없음(pending-associate). 검증은 association 없이 endpoint 설정+.ovpn export 로 충분.
 
+### Wave B/C — 2025·공통 토픽 (기존 검증카드 조합 + 신규 케이스 live)
+
+| 토픽 | live 검증 | 비고 |
+|---|---|---|
+| RDS Connection | Data API(CREATE/INSERT/SELECT 왕복+query.py boto3) + RDS Proxy(available,TLS,SECRETS,cluster target) | Aurora Serverless v2 실생성→검증→삭제 |
+| message-queue | FIFO(순서+콘텐츠 중복제거) + EventBridge Pipes(RUNNING) + 부분배치 handler(unit) | DLQ/fanout 은 sqs-sns.md 기반 |
+| storage-protect | S3 Access Point(Internet, prefix 정책) | Macie 는 계정과금이라 미실행(현재 미활성 확인) |
+| nosql | crud.py(put/get/query/delete 왕복) | DDB. DAX/DocDB 는 스크립트 |
+| ecs-logging/monitoring/efs-security/waf/cicd | 기존 tier2/tier3 검증카드 조합 | taskdef 6종·rule 12종·cloudwatch 등 기검증 |
+| workflow/cdn/cloud-governance/flink/msk/eks-scaling/container-logging/keycloak/rest-api | 기존 serverless/analytics/cncf/k8s 카드 조합 | 각 토픽 신규 케이스는 핸들러/스크립트 |
+
+**RDS 발견 함정(실측)**:
+- `--skip-final-snapshot` 은 create-db-cluster 옵션 아님(delete 전용). create 에 넣으면 Unknown options.
+- Data API 는 cluster-available 만으론 부족 — 인스턴스도 available 이어야(creating 중 DatabaseNotFoundException).
+- managed master secret(`--manage-master-user-password`)을 Proxy 가 그대로 참조 → Secrets 수동생성 불필요.
+
+**message-queue 발견(실측)**: FIFO ContentBasedDeduplication 로 동일본문 3건→2건 수신(순서 보장). Pipes RUNNING 확인.
+
 **VPC Lattice 발견 함정(실측)**:
 - Lambda 타깃은 항상 `UNAVAILABLE`(reasonCode HealthCheckNotSupported) = **정상**. Lattice 는 Lambda 헬스체크 안 함. TG 가 ACTIVE 면 OK.
 - **rule priority 1~2000**(초과 ValidationException), **fixedResponse 는 404·500 만**(403/401/503 unsupported).
