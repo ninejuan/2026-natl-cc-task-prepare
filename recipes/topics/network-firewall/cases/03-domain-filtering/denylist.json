@@ -1,6 +1,6 @@
 {
   "_desc": "특정 도메인 차단(DENYLIST). 나머지는 통과.",
-  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-deny --type STATEFUL --capacity 100 --rule-group file://denylist.json",
+  "_usage": "jq 'with_entries(select(.key|startswith(\"_\")|not))' denylist.json > rg.json && aws network-firewall create-rule-group --rule-group-name lab-nfw-deny --type STATEFUL --capacity 100 --rule-group file://rg.json  # ★ _-prefixed 주석 키를 먼저 제거",
   "RulesSource": {
     "RulesSourceList": {
       "GeneratedRulesType": "DENYLIST",

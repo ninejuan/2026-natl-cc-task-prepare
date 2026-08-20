@@ -22,12 +22,20 @@
 
 ## 케이스 인덱스
 
-| # | 케이스 | 트리거 | 복구 |
-|---|---|---|---|
-| 01 | SG 0.0.0.0/0 인바운드 → 즉시 제거 | EventBridge(AuthorizeSecurityGroupIngress) | Lambda revoke |
-| 02 | EC2 stop → 자동 재시작 | EventBridge(EC2 state-change) | Lambda start |
-| 03 | Config rule + SSM remediation | restricted-ssh 등 | AWS-DisablePublicAccessForSecurityGroup |
-| 04 | 태그 위반 탐지 → 알림 | EventBridge/Config | SNS |
+| # | 케이스 | 트리거 | 복구 | 상태 |
+|---|---|---|---|---|
+| 01 | SG 0.0.0.0/0 인바운드 → 즉시 제거 | EventBridge(AuthorizeSecurityGroupIngress) | Lambda revoke | ✅ 실검증 `cases/01-sg-autofix/verify.sh` |
+| 02 | EC2 stop → 자동 재시작 | EventBridge(EC2 state-change) | Lambda start | 미작성 |
+| 03 | Config rule + SSM remediation | restricted-ssh 등 | AWS-DisablePublicAccessForSecurityGroup | 미작성 |
+| 04 | 태그 위반 탐지 → 알림 | EventBridge/Config | SNS | 미작성 |
+
+### 01 실검증 결과 (ap-northeast-1, 2026-08-20)
+
+`verify.sh {deploy|test|test-trail|teardown}` — VPC+SG, SNS, IAM role, Lambda(handler.py), CloudTrail, EventBridge rule 를 `lab-apne1-*` 로 생성/검증/정리.
+
+- **direct invoke**: SG 에 `tcp/22 0.0.0.0/0` 추가 → Lambda 동기 호출 → 반환 `{"reverted":[{22/tcp 0.0.0.0/0}],"group":sg-...}` → describe 인바운드 `[]` (제거 확인).
+- **trail-driven(end-to-end)**: authorize → CloudTrail → EventBridge rule `Invocations=1`, `FailedInvocations=0` → Lambda 실행 → ~10초 내 `0.0.0.0/0:22` 제거.
+- **함정(실측)**: (1) 새 CloudTrail 는 첫 delivery 까지 수 분 warm-up — 그 사이 EventBridge 안 뜸. (2) JMESPath 중첩필터 `IpPermissions[?ToPort==\`22\`].IpRanges[?...]` 는 projection 때문에 **비어서 오탐**; `.IpRanges[] | [?CidrIp==\`0.0.0.0/0\`]` 처럼 `[]` 로 flatten 후 필터. (3) 이 계정엔 외부 자동복구 없음(Lambda 경로 끊으면 22 유지됨 확인).
 
 ## 케이스 01 복구 Lambda (핵심 패턴)
 

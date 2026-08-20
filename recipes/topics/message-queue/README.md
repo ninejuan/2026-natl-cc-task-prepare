@@ -16,7 +16,7 @@
 | # | 케이스 | 핵심 | 검증 |
 |---|---|---|---|
 | 01 | `cases/01-fifo/` | FIFO 순서 보장 + 콘텐츠 중복제거 | ✅ live |
-| 02 | `cases/02-dlq-redrive/` | DLQ + redrive(재처리) | 기반 카드 |
+| 02 | `cases/02-dlq-redrive/` | DLQ + redrive(재처리) | ✅ live (maxReceiveCount=2 초과→DLQ 이동 실측) |
 | 03 | `cases/03-partial-batch/` | ReportBatchItemFailures(부분 실패) | ✅ 핸들러 |
 | 04 | `cases/04-fanout/` | SNS→여러 SQS 팬아웃 | 기반 카드 |
 | 05 | `cases/05-pipes/` | EventBridge Pipes(SQS→타깃) | 스크립트 |

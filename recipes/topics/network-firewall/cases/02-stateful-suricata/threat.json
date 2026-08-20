@@ -1,6 +1,6 @@
 {
   "_desc": "Threat Hunting — Suricata 원문 규칙. TLS SNI/HTTP 로 알려진 악성 패턴 alert·drop.",
-  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-suricata --type STATEFUL --capacity 200 --rule-group file://threat.json",
+  "_usage": "jq 'with_entries(select(.key|startswith(\"_\")|not))' threat.json > rg.json && aws network-firewall create-rule-group --rule-group-name lab-nfw-suricata --type STATEFUL --capacity 200 --rule-group file://rg.json  # ★ _-prefixed 주석 키를 먼저 제거",
   "_note": "rules_string 은 Suricata 문법. sid 는 유일. drop=차단, alert=로깅만.",
   "RuleVariables": {
     "IPSets": { "HOME_NET": { "Definition": ["10.30.0.0/16"] } }

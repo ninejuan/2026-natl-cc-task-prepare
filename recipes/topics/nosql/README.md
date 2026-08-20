@@ -16,9 +16,9 @@
 | # | 케이스 | 서비스 | 검증 |
 |---|---|---|---|
 | 01 | DynamoDB GSI/LSI/Stream/TTL | DDB | tier2 ✓ + partiql 15종 ✓ |
-| 02 | DAX (마이크로초 캐시) | DDB + DAX | `cases/02-dax/`(스크립트, VPC 클러스터) |
-| 03 | Global Table (멀티리전 복제) | DDB | `cases/03-global-table/`(live) |
-| 04 | DocumentDB (MongoDB 호환) | DocumentDB | `cases/04-documentdb/`(스크립트, ~10분) |
+| 02 | DAX (마이크로초 캐시) | DDB + DAX | `cases/02-dax/` live ✓ (dax.t3.small available+엔드포인트) |
+| 03 | Global Table (멀티리전 복제) | DDB | `cases/03-global-table/` live ✓ (euw1↔euc1 put/get 왕복) |
+| 04 | DocumentDB (MongoDB 호환) | DocumentDB | `cases/04-documentdb/` live ✓ (docdb 5.0 available+엔드포인트) |
 | 05 | boto3 CRUD 앱(배포파일 형) | DDB | `cases/05-crud-app/crud.py` |
 
 ## 서비스 선택
@@ -48,6 +48,8 @@ aws docdb describe-db-clusters --region $R --query 'DBClusters[?DBClusterIdentif
 - **LSI 는 테이블 생성 시에만**, GSI 는 나중에 추가 가능.
 - **DAX 는 VPC 클러스터 + 시간과금** — 마이크로초 캐시 필요할 때만. 서브넷그룹+SG 필요.
 - **Global Table 은 스트림 필수**(NEW_AND_OLD_IMAGES) + 각 리전 동일 테이블명.
+  - 생성 직후 `update-table --replica-updates` 는 대상 리전에 대해 일시적 `UnrecognizedClientException`(security token invalid) 를 던진다 → **재시도**로 해결(setup.sh 에 재시도 루프). (live 검증)
+  - `describe-table --query Table.Replicas` 는 **조회 리전을 뺀 나머지 복제본만** 보인다(euw1 에서 보면 euc1 만). 양쪽을 보려면 각 리전에서 describe. 멀티리전 증명은 교차리전 put/get 왕복.
 - **DocumentDB 는 VPC 내부 + TLS** — mongosh 로 `--tls --tlsCAFile global-bundle.pem`. 인터넷 직결 불가.
 - **DocumentDB 생성 ~10분** — 채점은 미리 뜬 전제.
 - N(숫자) 타입도 문자열로(`{"N":"1000"}`).

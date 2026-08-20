@@ -13,12 +13,16 @@
 
 ## 케이스 인덱스
 
-| # | 케이스 | 구조 | 기반 |
-|---|---|---|---|
-| 01 | Producer → MSK → Lambda ESM → DDB | Lambda event source mapping | msk/ + lambda |
-| 02 | Producer → MSK → EC2 consumer → S3 | kafka-python 컨슈머 | `cases/02-ec2-consumer/` |
-| 03 | IAM SASL 인증 | AWS_MSK_IAM | msk/ ✓ |
-| 04 | Serverless vs provisioned | 클러스터 타입 | 비교 |
+| # | 케이스 | 구조 | 기반 | 상태 |
+|---|---|---|---|---|
+| 01 | Producer → MSK → Lambda ESM → DDB | Lambda event source mapping | `cases/01-lambda-esm/` | ✅ 실검증(eu-central-1): 클러스터 ACTIVE + ESM Enabled |
+| 02 | Producer → MSK → EC2 consumer → S3 | kafka-python 컨슈머 | `cases/02-ec2-consumer/`(미작성) | ⬜ |
+| 03 | IAM SASL 인증 | AWS_MSK_IAM | msk/ ✓ | ✅ Serverless=IAM 강제(9098) |
+| 04 | Serverless vs provisioned | 클러스터 타입 | 비교 | ⬜ |
+
+> **실검증 01 (2026-08-20, eu-central-1)**: MSK Serverless `lab-euc1-msk` ACTIVE
+> (ClusterType=SERVERLESS, IAM SASL 9098), Lambda ESM `topics=[lab-topic]` **State=Enabled**.
+> 재현: `cases/01-lambda-esm/setup.sh` → `teardown.sh`. 실제 produce/consume 은 VPC 내 EC2 필요(아래).
 
 ## 인증·연결 (실검증 함정 반영)
 

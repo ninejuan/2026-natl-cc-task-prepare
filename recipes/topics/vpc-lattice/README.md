@@ -32,7 +32,7 @@ Service Network ──(association)── VPC          ← 이 VPC 안 클라이
 
 | # | 케이스 | 타깃 | 검증 |
 |---|---|---|---|
-| 01 | `cases/01-lambda-service/` | Lambda 타깃 서비스(최단 경로) | ✅ live |
+| 01 | `cases/01-lambda-service/` | Lambda 타깃 서비스(최단 경로) | ✅ live (VPC assoc=ACTIVE·DNS 발급 실측: `verify-association.sh`) |
 | 02 | `cases/02-ec2-instance-target/` | EC2(INSTANCE) 타깃 + health check | 경로(고가 EC2) |
 | 03 | `cases/03-path-header-routing/` | 경로·헤더 기반 rule 라우팅 | ✅ live(rule) |
 | 04 | `cases/04-weighted/` | 가중 라우팅(카나리) | ✅ live(rule) |

@@ -19,7 +19,7 @@
 | 02 | rate limit + custom 403 | RateBasedStatement + CustomResponse | rule-statements 5,6 ✓ |
 | 03 | IP set / geo 차단 | IPSet / GeoMatch | rule-statements 7~9 ✓ |
 | 04 | 헤더/AND 조합/size | ByteMatch / And / Size | rule-statements 10~12 ✓ |
-| 05 | WAF 로깅 | put-logging-configuration | `cases/05-logging/` |
+| 05 | WAF 로깅 | put-logging-configuration | `cases/05-logging/` ✅ live (12 rule ACL + CW 로그그룹 연결 실측) |
 | 06 | Bot Control | AWSManagedRulesBotControlRuleSet | `cases/06-bot-control/` |
 
 ## 검증 (채점자 문체 — 2026 task1 mark.sh 방식)

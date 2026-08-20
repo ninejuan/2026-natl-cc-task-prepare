@@ -15,12 +15,22 @@
 
 | # | 케이스 | 엣지 기능 | 검증 |
 |---|---|---|---|
-| 01 | S3 + OAC (정적 호스팅) | 오리진 보호 | cloudfront.md ✓ |
-| 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | functions 7종 ✓ |
+| 01 | S3 + OAC (정적 호스팅) | 오리진 보호 | ✅ 실검증 `cases/01-s3-oac/verify.sh` |
+| 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | ✅ viewer-response 헤더 01 에 포함 실검증 |
 | 03 | Lambda@Edge: 이미지 리사이징 | origin-response | image-resize handler ✓ |
 | 04 | behavior 경로 분기 | /api→ALB, /static→S3 | `cases/04-behaviors/` |
 | 05 | origin failover | primary/secondary origin group | `cases/05-failover/` |
 | 06 | signed URL/cookie | 콘텐츠 보호 | `cases/06-signed/` |
+
+### 01/02 실검증 결과 (ap-northeast-1 + CloudFront 글로벌, 2026-08-20)
+
+`cases/01-s3-oac/verify.sh {deploy|test|teardown}` — private S3(PAB on)+OAC+배포(Comment=`lab-apne1-cf`)+viewer-response Function 을 `lab-apne1-*` 로 생성/검증/정리.
+
+- **배포**: Status=`Deployed`, DefaultRootObject=index.html.
+- **curl `https://<domain>/`** → `HTTP/2 200`, body = 업로드한 index.html. 기본 루트 오브젝트로 `/` 가 index.html 반환.
+- **viewer-response Function 헤더**(실측): `x-custom-marker: cloud-skills-2026`, `strict-transport-security`, `x-content-type-options: nosniff`, `x-frame-options: DENY` 모두 응답에 존재.
+- **직접 S3 접근 차단**: `curl https://<bucket>.s3.ap-northeast-1.amazonaws.com/index.html` → **403** (PAB + OAC, 버킷 정책은 배포 SourceArn 만 허용).
+- **함정(실측)**: (1) OAC 오리진은 `S3OriginConfig.OriginAccessIdentity:""` + origin 레벨 `OriginAccessControlId`. (2) 캐시가 채점/헤더검증 방해 안 하도록 managed `CachingDisabled`(4135ea2d-...) 사용. (3) 배포 반영·teardown disable→delete 모두 수 분(실측 배포 완료까지 wait 필요).
 
 ## Function vs Lambda@Edge
 

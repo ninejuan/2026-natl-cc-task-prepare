@@ -74,6 +74,7 @@ aws ec2 describe-route-tables --region $R --filters Name=vpc-id,Values=$VPC \
 
 ## 함정
 
+- **★ JSON 의 `_`-prefixed 키(`_desc`/`_usage`/`_note`)는 주석용** — CLI 에 그대로 넘기면 client-side `Unknown parameter in RuleGroup: "_desc"` 로 실패(API 호출 전에 죽음, 실측). 넘기기 전 `jq 'with_entries(select(.key|startswith("_")|not))'` 로 제거. (각 파일 `_usage` 에 반영)
 - **capacity 는 생성 시 고정** — rule group 예상 규칙 수를 넉넉히(도메인 리스트는 도메인당 소비). 부족하면 규칙 추가 불가 → 재생성.
 - **STRICT_ORDER 면 stateful reference 에 priority 필수**, DEFAULT_ACTION_ORDER 면 priority 불가.
 - **도메인 필터링은 HTTP Host / TLS SNI 기반** — `target_types`: `HTTP_HOST`, `TLS_SNI`. HTTPS 도메인 차단하려면 TLS_SNI 도.

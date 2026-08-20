@@ -25,8 +25,8 @@
 
 | # | 케이스 | 핵심 | 기반 |
 |---|---|---|---|
-| 01 | FS policy — IAM 마운트 강제 | AccessedViaMountTarget + 특정 role | efs.md ✓ |
-| 02 | Access Point POSIX 격리 | uid/gid + root dir per 앱 | efs.md ✓ |
+| 01 | FS policy — IAM 마운트 강제 | AccessedViaMountTarget + 특정 role | `cases/01-iam-accesspoint/` ✅ live |
+| 02 | Access Point POSIX 격리 | uid/gid + root dir per 앱 | `cases/01-iam-accesspoint/` ✅ live |
 | 03 | 특정 role 만 쓰기 | FS policy Principal 제한 + 나머지 Deny | `cases/03-role-scoped/` |
 
 ## 검증 (채점자 문체)

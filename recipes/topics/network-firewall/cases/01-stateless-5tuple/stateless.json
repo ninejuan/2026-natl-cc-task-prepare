@@ -1,6 +1,6 @@
 {
   "_desc": "Stateless 5-tuple 규칙. SSH(22)는 즉시 drop, 나머지는 stateful 로 forward.",
-  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-stateless --type STATELESS --capacity 100 --rule-group file://stateless.json",
+  "_usage": "jq 'with_entries(select(.key|startswith(\"_\")|not))' stateless.json > rg.json && aws network-firewall create-rule-group --rule-group-name lab-nfw-stateless --type STATELESS --capacity 100 --rule-group file://rg.json  # ★ _-prefixed 주석 키를 먼저 제거해야 함(안 그러면 Unknown parameter 에러)",
   "RulesSource": {
     "StatelessRulesAndCustomActions": {
       "StatelessRules": [

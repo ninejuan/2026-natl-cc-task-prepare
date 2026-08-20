@@ -13,13 +13,21 @@
 
 ## 케이스 인덱스
 
-| # | 케이스 | 핵심 | 기반 |
-|---|---|---|---|
-| 01 | 대시보드(ECS/ALB 메트릭) | put-dashboard, ALB RequestCount·TargetResponseTime·5xx | tier3 ✓ |
-| 02 | 알람 + SNS | put-metric-alarm, treat-missing-data | tier3 ✓ |
-| 03 | 이상 탐지 알람 | ANOMALY_DETECTION_BAND | tier3 ✓ |
-| 04 | Container Insights | ECS 클러스터 CPU/메모리 자동 메트릭 | `cases/04-container-insights/` |
-| 05 | composite alarm | 여러 알람 AND/OR | tier3 |
+| # | 케이스 | 핵심 | 기반 | 상태 |
+|---|---|---|---|---|
+| 01 | 대시보드(ECS/ALB 메트릭) | put-dashboard, ALB RequestCount·TargetResponseTime·5xx | tier3 ✓ | ✅ 실검증 `cases/01-dashboard-alarm/verify.sh` |
+| 02 | 알람 + SNS | put-metric-alarm, treat-missing-data | tier3 ✓ | ✅ 위와 동일 스크립트에 포함 |
+| 03 | 이상 탐지 알람 | ANOMALY_DETECTION_BAND | tier3 ✓ | 미작성(학습데이터 필요) |
+| 04 | Container Insights | ECS 클러스터 CPU/메모리 자동 메트릭 | `cases/04-container-insights/` | 미작성 |
+| 05 | composite alarm | 여러 알람 AND/OR | tier3 | 미작성 |
+
+### 01/02 실검증 결과 (ap-northeast-1, 2026-08-20)
+
+`cases/01-dashboard-alarm/verify.sh {deploy|test|teardown}` — 대시보드 + 알람 + SNS 토픽을 `lab-apne1-*` 로 생성/검증/정리.
+
+- **dashboard**: `put-dashboard lab-apne1-dashboard` → `DashboardValidationMessages: []`, `list-dashboards` 에 노출. 위젯 3종(ALB RequestCount/5xx, ALB TargetResponseTime, ECS CPU/Memory) — 실제 ALB/ECS 없이도 put 성공(메커니즘 검증엔 충분).
+- **alarm**: `lab-apne1-alb-5xx` — `TreatMissingData=notBreaching`, `AlarmActions=<lab-apne1-monitoring-alarm SNS ARN>`. `set-alarm-state ALARM` 로 액션 배선 확인(OK↔ALARM 전이).
+- **함정(실측)**: 생성 직후 첫 평가 전에는 잠깐 `INSUFFICIENT_DATA` 로 보임 → notBreaching 라도 평가 후 OK 로 안정. 대시보드 body 는 위젯 좌표(x/y/width/height) 필수.
 
 ## 자주 쓰는 ALB/ECS 메트릭 (대시보드·알람 대상)
 
