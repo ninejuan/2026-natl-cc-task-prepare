@@ -159,6 +159,27 @@ tier3 lab 전량 정리.
 | VPC Lattice | 04 weighted | 실행 | 90:10 가중 forward rule 실제 create |
 | VPC Lattice | 05 auth policy | 실행 | service AWS_IAM 전환 + put-auth-policy Active |
 
+| Network Firewall | 01 stateless 5tuple | 실행 | rule group create (aws:drop 22 / forward_to_sfe) |
+| Network Firewall | 02 stateful suricata | 실행 | Suricata rules_string rule group create |
+| Network Firewall | 03 domain filtering | 실행 | ALLOWLIST/DENYLIST(HTTP_HOST+TLS_SNI) rule group create |
+| Network Firewall | 04 policy+logging | 실행 | firewall policy(stateless+stateful ref) create |
+| Network Firewall | 05 firewall deploy | 실행(E2E) | 전용 VPC+firewall endpoint READY+inspection 라우팅. 즉시 삭제 |
+| Client VPN | 01 mutual TLS | 실행 | easy-rsa 인증서→ACM import→endpoint 생성 성공 |
+| Client VPN | 02 endpoint deploy | 실행 | endpoint 생성(cert-auth/split/DNS)+.ovpn export. association 생략(과금), 즉시 삭제 |
+| Client VPN | 03 SAML auth | 스크립트 | SAML provider+federated-auth endpoint (IdP metadata 필요) |
+| Client VPN | 04 split-tunnel/DNS | 문서 | PHZ 해석(VPC .2 리졸버)+2024 반칙검사 흐름 |
+| RDS Connection | 01~04 | 스크립트(미생성) | Aurora 생성 ~10분이라 실생성 안 함. 문법은 context7(TF v6) 확인. Data API/Proxy/IAM auth/rotation 스크립트+boto3 |
+
+**Network Firewall 발견 함정(실측)**:
+- firewall 생성/삭제 각 5~10분(PROVISIONING/DELETING). 채점 3분과 안 맞음 → 미리 배포 전제.
+- **삭제 순서**: firewall endpoint 참조 라우트 삭제 → firewall(수 분) → policy → rule group. 역순 실패.
+- **★ `create-route --vpc-endpoint-id` 라우트는 describe 시 endpoint 가 `GatewayId` 필드에 뜬다**(VpcEndpointId 아님). 삭제는 dst cidr 로. 이걸 모르면 firewall 삭제 무한실패.
+
+**Client VPN 발견 함정(실측)**:
+- **서버 인증서 CN 은 FQDN 필수** — CN=server 면 ACM DomainName=null → endpoint "does not have a domain" 거부. vpn.lab.internal 로 해결.
+- endpoint 삭제 후 ACM 인증서 삭제 ~1분 지연(in use).
+- association 전이면 과금 없음(pending-associate). 검증은 association 없이 endpoint 설정+.ovpn export 로 충분.
+
 **VPC Lattice 발견 함정(실측)**:
 - Lambda 타깃은 항상 `UNAVAILABLE`(reasonCode HealthCheckNotSupported) = **정상**. Lattice 는 Lambda 헬스체크 안 함. TG 가 ACTIVE 면 OK.
 - **rule priority 1~2000**(초과 ValidationException), **fixedResponse 는 404·500 만**(403/401/503 unsupported).

@@ -1,0 +1,32 @@
+{
+  "_desc": "Stateless 5-tuple 규칙. SSH(22)는 즉시 drop, 나머지는 stateful 로 forward.",
+  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-stateless --type STATELESS --capacity 100 --rule-group file://stateless.json",
+  "RulesSource": {
+    "StatelessRulesAndCustomActions": {
+      "StatelessRules": [
+        {
+          "Priority": 10,
+          "RuleDefinition": {
+            "MatchAttributes": {
+              "Sources": [{ "AddressDefinition": "0.0.0.0/0" }],
+              "Destinations": [{ "AddressDefinition": "0.0.0.0/0" }],
+              "Protocols": [6],
+              "DestinationPorts": [{ "FromPort": 22, "ToPort": 22 }]
+            },
+            "Actions": ["aws:drop"]
+          }
+        },
+        {
+          "Priority": 20,
+          "RuleDefinition": {
+            "MatchAttributes": {
+              "Sources": [{ "AddressDefinition": "0.0.0.0/0" }],
+              "Destinations": [{ "AddressDefinition": "0.0.0.0/0" }]
+            },
+            "Actions": ["aws:forward_to_sfe"]
+          }
+        }
+      ]
+    }
+  }
+}

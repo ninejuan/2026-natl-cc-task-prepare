@@ -1,0 +1,11 @@
+{
+  "_desc": "특정 도메인 차단(DENYLIST). 나머지는 통과.",
+  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-deny --type STATEFUL --capacity 100 --rule-group file://denylist.json",
+  "RulesSource": {
+    "RulesSourceList": {
+      "GeneratedRulesType": "DENYLIST",
+      "TargetTypes": ["HTTP_HOST", "TLS_SNI"],
+      "Targets": ["malware.example.com", ".coinhive.com", "evil.test"]
+    }
+  }
+}

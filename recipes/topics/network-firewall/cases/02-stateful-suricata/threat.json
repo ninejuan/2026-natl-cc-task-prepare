@@ -1,0 +1,11 @@
+{
+  "_desc": "Threat Hunting — Suricata 원문 규칙. TLS SNI/HTTP 로 알려진 악성 패턴 alert·drop.",
+  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-suricata --type STATEFUL --capacity 200 --rule-group file://threat.json",
+  "_note": "rules_string 은 Suricata 문법. sid 는 유일. drop=차단, alert=로깅만.",
+  "RuleVariables": {
+    "IPSets": { "HOME_NET": { "Definition": ["10.30.0.0/16"] } }
+  },
+  "RulesSource": {
+    "RulesString": "drop tls $HOME_NET any -> any any (tls.sni; content:\"malware.example.com\"; startswith; nocase; msg:\"block malware SNI\"; sid:1001; rev:1;)\ndrop http $HOME_NET any -> any any (http.host; content:\"evil.test\"; msg:\"block evil host\"; sid:1002; rev:1;)\nalert tcp $HOME_NET any -> any 4444 (msg:\"suspicious port 4444\"; sid:1003; rev:1;)\npass tcp $HOME_NET any -> any 443 (msg:\"allow https\"; sid:1004; rev:1;)"
+  }
+}

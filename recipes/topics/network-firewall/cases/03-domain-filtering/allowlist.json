@@ -1,0 +1,11 @@
+{
+  "_desc": "Egress Web Filtering — 지정 도메인만 허용(ALLOWLIST). 나머지 egress 차단.",
+  "_usage": "aws network-firewall create-rule-group --rule-group-name lab-nfw-allow --type STATEFUL --capacity 100 --rule-group file://allowlist.json",
+  "RulesSource": {
+    "RulesSourceList": {
+      "GeneratedRulesType": "ALLOWLIST",
+      "TargetTypes": ["HTTP_HOST", "TLS_SNI"],
+      "Targets": [".amazonaws.com", ".github.com", "pypi.org"]
+    }
+  }
+}
