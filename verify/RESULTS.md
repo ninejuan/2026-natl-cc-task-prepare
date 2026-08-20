@@ -81,6 +81,19 @@
 2. botocore `region: None` → `NoBrokersAvailable`. `AWS_DEFAULT_REGION` 명시 필요.
 - Glue Parquet 타입 함정: SUM(int)→INT64 라 Athena 테이블 스키마를 double 로 잡으면 HIVE_BAD_DATA.
 
+## recipes/aws/tier1 — 실계정 검증
+
+| 대상 | 결과 | 비고 |
+|---|---|---|
+| `route53.md` split-view | ✓ | public zone q1→54.0.0.10(권위서버 dig), private zone q1→172.16.0.10(API). 2024 DNS 재현 |
+| `route53.md` 라우팅정책 | ✓ | weighted·failover(+health check)·latency·geolocation 4종 생성 |
+| `cloudfront.md` OAC | ✓ | 배포 Deployed(실측 ~2분), CF 200 "Cloud Skills 2026", **S3 직접 403**. 2024 CDN 재현 |
+| `cloudfront/functions/viewer-request` | ✓ | test-function: /old→/index.html 리라이트 |
+| `cloudfront/functions/viewer-response-headers` | ✓ | test-function: x-custom-marker 헤더 추가 |
+| `acm.md` DNS 검증 발급 | ✓ | us-east-1 request-certificate, PENDING_VALIDATION 확인 |
+
+tier1 lab 정리: Route53 zone/HC 삭제 완료. CloudFront 는 disable→반영 대기 후 삭제 예정(S3 포함).
+
 ## 미검증 / 확인 필요
 
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
