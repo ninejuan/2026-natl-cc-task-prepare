@@ -1,0 +1,35 @@
+[
+  {
+    "_comment": "FireLens → S3 아카이브. 02-firelens-cw 와 VPC/역할/클러스터는 동일, app 컨테이너의 logConfiguration.options 만 S3 플러그인으로 교체. task role 에 s3:PutObject(대상 버킷) 필요.",
+    "name": "app",
+    "image": "public.ecr.aws/docker/library/busybox:latest",
+    "essential": true,
+    "command": ["sh", "-c", "i=0; while true; do echo \"{\\\"level\\\":\\\"INFO\\\",\\\"seq\\\":$i}\"; i=$((i+1)); sleep 5; done"],
+    "logConfiguration": {
+      "logDriver": "awsfirelens",
+      "options": {
+        "Name": "s3",
+        "region": "ap-northeast-2",
+        "bucket": "lab-ecslogs-ACCT",
+        "total_file_size": "1M",
+        "upload_timeout": "1m",
+        "s3_key_format": "/logs/$TAG/%Y/%m/%d/%H-%M-%S"
+      }
+    }
+  },
+  {
+    "name": "log-router",
+    "image": "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable",
+    "essential": true,
+    "firelensConfiguration": { "type": "fluentbit", "options": { "enable-ecs-log-metadata": "true" } },
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/lab-firelens-router",
+        "awslogs-region": "ap-northeast-2",
+        "awslogs-stream-prefix": "router",
+        "awslogs-create-group": "true"
+      }
+    }
+  }
+]

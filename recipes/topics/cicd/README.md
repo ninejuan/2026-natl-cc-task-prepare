@@ -18,7 +18,7 @@
 | # | 케이스 | 흐름 | 검증 |
 |---|---|---|---|
 | 01 | GHA → ECR → ECS 롤링 | build→push→update-service | `cases/01-gha-ecs/` (GHA 실행은 GitHub repo 필요) |
-| 01b | **CodePipeline: CodeCommit → CodeBuild → ECS** | 3-스테이지 완전 자동 | ✅ **live E2E**(Source/Build/Deploy 전부 Succeeded, ECS taskdef :1→:2) |
+| 01b | **CodePipeline: CodeCommit → CodeBuild → ECS** | 3-스테이지 완전 자동 | ✅ **live E2E** `cases/01-codepipeline-ecs/`(Source/Build/Deploy 전부 Succeeded, ECS taskdef :1→:2) |
 | 02 | GHA → ArgoCD GitOps | manifest push → Argo sync | cncf/argocd |
 | 03 | GHA OIDC 인증(키 없이) | assume-role-with-web-identity | ✅ live(OIDC provider + role trust sub=repo:.../main 실측) |
 | 04 | CodeBuild 이미지 빌드(로컬 docker 없이) | buildspec | ✅ live(NO_SOURCE 빌드→ECR push v1, SUCCEEDED) — GHA→ECR 절반과 동일 산출 |

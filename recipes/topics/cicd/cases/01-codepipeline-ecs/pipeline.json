@@ -1,0 +1,41 @@
+{
+  "_comment": "CodePipeline V2 정의. ROLE_ARN, ARTIFACT_BUCKET 치환. 실검증됨(3스테이지 Succeeded).",
+  "_usage": "aws codepipeline create-pipeline --cli-input-json file://pipeline.json (생성 즉시 자동 실행)",
+  "pipeline": {
+    "name": "lab-pipeline",
+    "roleArn": "ROLE_ARN",
+    "executionMode": "SUPERSEDED",
+    "pipelineType": "V2",
+    "artifactStore": { "type": "S3", "location": "ARTIFACT_BUCKET" },
+    "stages": [
+      {
+        "name": "Source",
+        "actions": [{
+          "name": "Src",
+          "actionTypeId": { "category": "Source", "owner": "AWS", "provider": "CodeCommit", "version": "1" },
+          "configuration": { "RepositoryName": "lab-cc", "BranchName": "main" },
+          "outputArtifacts": [{ "name": "SrcOut" }]
+        }]
+      },
+      {
+        "name": "Build",
+        "actions": [{
+          "name": "Build",
+          "actionTypeId": { "category": "Build", "owner": "AWS", "provider": "CodeBuild", "version": "1" },
+          "configuration": { "ProjectName": "lab-pipe-build" },
+          "inputArtifacts": [{ "name": "SrcOut" }],
+          "outputArtifacts": [{ "name": "BuildOut" }]
+        }]
+      },
+      {
+        "name": "Deploy",
+        "actions": [{
+          "name": "Deploy",
+          "actionTypeId": { "category": "Deploy", "owner": "AWS", "provider": "ECS", "version": "1" },
+          "configuration": { "ClusterName": "lab-pipe-ecs", "ServiceName": "lab-pipe-svc", "FileName": "imagedefinitions.json" },
+          "inputArtifacts": [{ "name": "BuildOut" }]
+        }]
+      }
+    ]
+  }
+}
