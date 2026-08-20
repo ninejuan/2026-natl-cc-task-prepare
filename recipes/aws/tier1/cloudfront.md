@@ -8,7 +8,7 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 ```
 CloudFront 는 글로벌. 배포 반영 **실측 ~2분**(최대 10분). WAF·ACM 은 **us-east-1**.
 
-`functions/` 에 CloudFront Function 예제.
+> 📎 **CloudFront Functions 7종 모음**: `functions/` (README.md 카탈로그) — 보안헤더, apex→www 리다이렉트, Basic 인증, SPA 리라이트, 캐시키 정규화, 국가별 라우팅, A/B 배정. 전부 `test-function` API 로 실행 검증.
 
 ---
 

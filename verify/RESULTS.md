@@ -126,6 +126,20 @@ S3 버전관리 버킷은 버전+삭제마커 제거 후 rb (카드 정리 절�
 tier3 lab 전량 정리.
 - ⚠️ Flink Studio(analytics 검증 때 생성)가 삭제 실패로 READY 로 수 시간 잔존 → 최종 스캔에서 발견·재삭제. **삭제 요청 후 상태 재확인 필요**(delete-application 이 조용히 실패할 수 있음).
 
+## 예제 컬렉션 보강 (tier1/2/3, Athena.md 식 다양한 use-case)
+
+| 컬렉션 | 상태 | 검증 방식 / 발견 |
+|---|---|---|
+| tier2/dynamodb/partiql.sql (15종) | ✓ | `execute-statement` 15개 실행. 카운터 1000→900→400, 조건부 amount<500 정확히 ConditionalCheckFailed |
+| tier2/s3/bucket-policies.md (13종) | ✓ | 정책 문법(기존 s3.md apply 로 대표 검증). 복붙용 패턴 |
+| tier2/waf/rule-statements.json (12종) | ✓ | 12종 전부 한 WebACL 에 넣어 `create-web-acl` 통과. **CLI ByteMatch SearchString 은 base64 필수**(평문이면 "Invalid base64") |
+| tier1/route53/record-sets.md | ✓ | 레코드 JSON 문법(기존 route53 apply 로 대표 검증) |
+| tier3/cloudwatch/logs-insights.md (15종) | ✓ | `start-query`→`get-query-results` 14개 실행. error_pct=40, distinct=3, pct/avg 정확 |
+| tier3/iam/policy-documents.md | ✓ | identity 13종 Access Analyzer 통과, trust 9종 실제 `create-role` 통과 |
+| tier1/cloudfront/functions/ (7종) | ✓ | 전부 `test-function` 실행 검증. **querystring 재할당은 키 순서 못 바꿈**(정렬 no-op) → utm 삭제로 수정 |
+
+전량 정리 확인(DDB 테이블·로그그룹·WebACL·IPSet·test role·CFF 함수 0개 잔존).
+
 ## 발견 함정 총정리 (전 카드 반영)
 - **zsh ARN modifier**: `"$VAR:영문자"` → `:r`/`:s`/`:l` 로 잘림. `${VAR}:...` 중괄호 또는 조회. heredoc 안에서도 발생.
 - Firehose `DynamicPartitioningConfiguration`(not `DynamicPartitioning`).
