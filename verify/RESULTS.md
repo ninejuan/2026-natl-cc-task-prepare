@@ -128,18 +128,24 @@ tier3 lab 전량 정리.
 
 ## 예제 컬렉션 보강 (tier1/2/3, Athena.md 식 다양한 use-case)
 
-| 컬렉션 | 상태 | 검증 방식 / 발견 |
-|---|---|---|
-| tier2/dynamodb/partiql.sql (15종) | ✓ | `execute-statement` 15개 실행. 카운터 1000→900→400, 조건부 amount<500 정확히 ConditionalCheckFailed |
-| tier2/s3/bucket-policies.md (13종) | ✓ | 정책 문법(기존 s3.md apply 로 대표 검증). 복붙용 패턴 |
-| tier2/waf/rule-statements.json (12종) | ✓ | 12종 전부 한 WebACL 에 넣어 `create-web-acl` 통과. **CLI ByteMatch SearchString 은 base64 필수**(평문이면 "Invalid base64") |
-| tier1/route53/record-sets.md | ✓ | 레코드 JSON 문법(기존 route53 apply 로 대표 검증) |
-| tier3/cloudwatch/logs-insights.md (15종) | ✓ | `start-query`→`get-query-results` 14개 실행. error_pct=40, distinct=3, pct/avg 정확 |
-| tier3/iam/policy-documents.md | ✓ | identity 13종 Access Analyzer 통과, trust 9종 실제 `create-role` 통과 |
-| tier1/cloudfront/functions/ (7종) | ✓ | 전부 `test-function` 실행 검증. **querystring 재할당은 키 순서 못 바꿈**(정렬 no-op) → utm 삭제로 수정 |
-| tier2/ecs/taskdefs/ (6종) | ✓ | 6종 전부 `register-task-definition` 통과(fargate/healthcheck+dependsOn/firelens/EFS/secrets/EC2 bridge) |
+검증 강도 표기: **실행**=리소스에 실제 명령 성공 / **수락**=API가 문서 수락(실동작 아님) / **린트**=validate-policy 등 정적 검증.
 
-전량 정리 확인(DDB 테이블·로그그룹·WebACL·IPSet·test role·CFF 함수 0개 잔존).
+| 컬렉션 | 검증 강도 | 검증 방식 / 발견 |
+|---|---|---|
+| tier2/dynamodb/partiql.sql (15종) | 실행 15/15 | `execute-statement` 15개 실행. 카운터 1000→900→400, 조건부 amount<500 정확히 ConditionalCheckFailed |
+| tier2/s3/bucket-policies.md (13종) | 린트 13/13 + 실행 2 | 13종 `accessanalyzer validate-policy`(RESOURCE_POLICY) ERROR 0. 수정한 VPCe/IP Deny 2종은 실제 put→self-delete 로 **자기잠금 아님** 확인 |
+| tier2/waf/rule-statements.json (12종) | 실행 12/12 | 12종 전부 한 WebACL 에 넣어 `create-web-acl` 통과. **CLI ByteMatch SearchString 은 base64 필수**(평문이면 "Invalid base64") |
+| tier1/route53/record-sets.md | 실행 12/14 | 기본 6종(A/AAAA/CNAME/MX/TXT/NS) + 정책 6종(weighted/failover/latency/geo/multivalue/geoproximity) 실제 UPSERT 통과. Alias 2종은 실 타깃 필요라 문법만(스킵 표기) |
+| tier3/cloudwatch/logs-insights.md (17종) | 실행 16/17 | `start-query` 16개 실행. error_pct=40, distinct=3, pct/avg 정확. 콜드스타트(avg_init=320.1)·Lambda REPORT parse(max=120.5)도 시드 로그로 실행 확인. VPC Flow 1종만 실제 flow-log 그룹 자동필드 필요라 문법만 |
+| tier3/iam/policy-documents.md (22종) | 실행 9 + 린트 13 | trust 9종 실제 `create-role` 통과, identity 13종 `validate-policy` ERROR 0 |
+| tier1/cloudfront/functions/ (7종) | 실행 7/7 | 전부 `test-function` 실행 검증. **querystring 재할당은 키 순서 못 바꿈**(정렬 no-op) → utm 삭제로 수정 |
+| tier2/ecs/taskdefs/ (6종) | 수락 6/6 | 6종 전부 `register-task-definition` 수락(fargate/healthcheck+dependsOn/firelens/EFS/secrets/EC2 bridge). task 실기동은 미검증 |
+
+전량 정리 확인(S3·Route53·DDB·로그그룹·WebACL·IPSet·test role·CFF 함수·health check 0개 잔존).
+
+### ★ 실검증 중 밟은 사고 (문서 반영)
+- **S3 버킷 자기잠금**: `Action:"s3:*"` + 조건 Deny(VPCe/IP)를 apply 하면 `s3:PutBucketPolicy`/`DeleteBucketPolicy` 까지 Deny → VPCe 밖 IAM user 본인이 정책 해제 불가 → **버킷 영구 잠김(root 만 해제)**. 실제로 테스트 버킷 잠가서 root 로 삭제함. **현장엔 root 없음** → 데이터 액션만 나열하도록 컬렉션 수정 + 함정 명시.
+- Route53 하위위임 NS 레코드는 존 삭제 시 apex NS/SOA 와 구분해 따로 삭제해야 함(안 그러면 HostedZoneNotEmpty).
 
 ## 발견 함정 총정리 (전 카드 반영)
 - **zsh ARN modifier**: `"$VAR:영문자"` → `:r`/`:s`/`:l` 로 잘림. `${VAR}:...` 중괄호 또는 조회. heredoc 안에서도 발생.

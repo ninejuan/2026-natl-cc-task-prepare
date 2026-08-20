@@ -112,3 +112,5 @@ stats count() as cnt by @message | sort cnt desc | limit 20
 filter action = "REJECT"
 | stats count() as rejects by srcAddr, dstAddr, dstPort | sort rejects desc | limit 20
 ```
+
+> ★ **자동 필드 주의**: `@type`·`@duration`·`@maxMemoryUsed`·`@requestId`(Lambda 로그), `action`·`srcAddr`(VPC Flow Log)는 CW Logs 가 **해당 로그 그룹**에서만 자동 파싱해 부여한다. 임의 로그그룹에선 없으니, 위 3개(Lambda REPORT/콜드스타트/Flow)는 실제 `/aws/lambda/*`·flow log 그룹에서 써야 한다. (parse 로 원문에서 직접 뽑는 콜드스타트 쿼리는 아무 그룹에서나 동작 — 실검증됨)

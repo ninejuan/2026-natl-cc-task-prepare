@@ -35,14 +35,17 @@ aws s3api get-bucket-policy --bucket $B --query Policy --output text | python3 -
 
 - 특정 VPC 엔드포인트에서만 접근 (그 외 거부)
 ```json
-{"Sid":"VpceOnly","Effect":"Deny","Principal":"*","Action":"s3:*",
+{"Sid":"VpceOnly","Effect":"Deny","Principal":"*",
+ "Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],
  "Resource":["arn:aws:s3:::BUCKET","arn:aws:s3:::BUCKET/*"],
  "Condition":{"StringNotEquals":{"aws:sourceVpce":"vpce-xxxxxxxx"}}}
 ```
+> ⚠️ **자기잠금 함정(실측)**: `Action` 을 `s3:*` 로 하면 `s3:PutBucketPolicy`/`s3:DeleteBucketPolicy` 까지 Deny 되어, VPCe 밖에 있는 **본인(IAM user)이 정책을 못 지운다** → 버킷이 영구 잠김(root 만 해제 가능, 현장엔 root 없음). 반드시 **데이터 액션만** 나열하고 버킷 관리 액션(`s3:*BucketPolicy`, `s3:DeleteBucket`)은 조건 Deny 대상에서 뺀다. IP 화이트리스트도 동일.
 
 - 특정 IP 대역에서만 접근 (사무실 IP 화이트리스트)
 ```json
-{"Sid":"IpAllowlist","Effect":"Deny","Principal":"*","Action":"s3:*",
+{"Sid":"IpAllowlist","Effect":"Deny","Principal":"*",
+ "Action":["s3:GetObject","s3:PutObject","s3:DeleteObject","s3:ListBucket"],
  "Resource":["arn:aws:s3:::BUCKET","arn:aws:s3:::BUCKET/*"],
  "Condition":{"NotIpAddress":{"aws:SourceIp":["203.0.113.0/24"]}}}
 ```
