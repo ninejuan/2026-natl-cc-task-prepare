@@ -72,6 +72,48 @@ echo -n "Q" | openssl s_client -connect cf.example.com:443 2>/dev/null | grep -i
 curl -sI "https://cf.example.com/" | head -1
 ```
 
+## Terraform
+
+DNS 검증은 Route53 과 함께 쓰면 자동 완결된다:
+```hcl
+provider "aws" {
+  alias  = "use1"
+  region = "us-east-1"      # CloudFront 용은 반드시 us-east-1
+}
+resource "aws_acm_certificate" "cf" {
+  provider          = aws.use1
+  domain_name       = "cf.example.com"
+  validation_method = "DNS"
+}
+resource "aws_route53_record" "val" {
+  for_each = { for o in aws_acm_certificate.cf.domain_validation_options : o.domain_name => o }
+  zone_id  = var.zone_id
+  name     = each.value.resource_record_name
+  type     = each.value.resource_record_type
+  ttl      = 60
+  records  = [each.value.resource_record_value]
+}
+resource "aws_acm_certificate_validation" "cf" {
+  provider                = aws.use1
+  certificate_arn         = aws_acm_certificate.cf.arn
+  validation_record_fqdns = [for r in aws_route53_record.val : r.fqdn]
+}
+```
+- **provider alias 로 us-east-1** 고정(CloudFront 용). ALB 용은 해당 리전 provider.
+- `aws_acm_certificate_validation` 이 ISSUED 까지 기다려준다 → 이후 CF/ALB 에 안전하게 연결.
+
+## Console 팁
+
+- **DNS 검증 원클릭**: 인증서 요청 후 "Create records in Route53" 버튼이 검증 CNAME 을 자동 생성. CLI change-batch 보다 빠르고 정확.
+- **상태 배지**: Pending validation → Issued 를 콘솔에서 바로 확인.
+- CloudFront 연결: 배포 편집 화면의 "Custom SSL certificate" 드롭다운에 **us-east-1 인증서만** 뜬다(리전 틀리면 목록에 없음 → 즉시 진단).
+
+## 참고 문서
+
+- ACM 사용 설명서: https://docs.aws.amazon.com/acm/latest/userguide/
+- DNS 검증: https://docs.aws.amazon.com/acm/latest/userguide/dns-validation.html
+- Terraform `aws_acm_certificate_validation`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/acm_certificate_validation
+
 ## 함정
 
 - **CloudFront = us-east-1** 인증서. 다른 리전이면 CF 콘솔·API 에서 안 보인다. 가장 흔한 실수.

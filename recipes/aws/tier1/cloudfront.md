@@ -144,6 +144,53 @@ curl -s -o /dev/null -w '%{http_code}\n' "https://$BUCKET.s3.$R.amazonaws.com/in
 curl -s "https://$DOMAIN/" | grep "Cloud Skills"
 ```
 
+## Terraform [검증됨: apply→CF 200/S3 403→destroy]
+
+`terraform-cloudfront/main.tf` — S3 + OAC + distribution + 버킷정책 한 스택. **destroy 시 disable→삭제를 TF 가 자동 처리**(CLI 는 수동 2단계).
+
+```bash
+cd terraform-cloudfront
+terraform init && terraform apply -auto-approve   # 배포 완료까지 기다림(~수 분)
+DOMAIN=$(terraform output -raw domain)
+curl -s "https://$DOMAIN/"                          # Cloud Skills
+curl -s -o /dev/null -w '%{http_code}\n' "https://$(terraform output -raw bucket).s3.ap-northeast-2.amazonaws.com/index.html"  # 403
+terraform destroy -auto-approve
+```
+핵심:
+```hcl
+resource "aws_cloudfront_origin_access_control" "oac" {
+  origin_access_control_origin_type = "s3"
+  signing_behavior                  = "always"
+  signing_protocol                  = "sigv4"
+}
+resource "aws_cloudfront_distribution" "d" {
+  comment = var.name        # ★ 채점이 Comment 로 찾음
+  origin {
+    domain_name              = aws_s3_bucket.b.bucket_regional_domain_name  # regional 도메인
+    origin_access_control_id = aws_cloudfront_origin_access_control.oac.id
+  }
+  default_cache_behavior { cache_policy_id = "658327ea-..." }  # CachingOptimized
+}
+# 버킷정책 SourceArn = aws_cloudfront_distribution.d.arn (OAC 의 짝)
+```
+- **`bucket_regional_domain_name`** 을 origin 에(단순 `bucket_domain_name` 은 리전 리다이렉트 이슈).
+- VPC Origin·behavior 분기·Functions association 도 TF 블록(`ordered_cache_behavior`, `function_association`).
+
+## Console 팁
+
+- **배포 마법사**: origin(S3/ALB/VPC Origin)·OAC·behavior·인증서를 폼으로. OAC 생성 시 "버킷 정책 자동 업데이트" 버튼이 SourceArn 정책을 바로 붙여준다(수동 실수 제거).
+- **Functions/Lambda@Edge**: behavior 편집에서 이벤트별(viewer/origin req/res) 연결. Functions 는 콘솔 에디터+Test.
+- **Invalidation**: Invalidations 탭에서 `/*` 클릭. 채점 전 캐시 클리어.
+- **배포 상태**: Deployed 될 때까지 기다렸다 테스트.
+
+## 참고 문서
+
+- CloudFront 개발자 가이드: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/
+- OAC: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-restricting-access-to-s3.html
+- VPC Origin: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/private-content-vpc-origins.html
+- CloudFront Functions: https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/cloudfront-functions.html
+- Terraform `aws_cloudfront_distribution`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudfront_distribution
+
 ## 함정
 
 - **Comment 로 찾는다** — 채점 스크립트가 `Comment==` 로 배포를 식별. Comment 를 과제지 이름과 일치시켜라.

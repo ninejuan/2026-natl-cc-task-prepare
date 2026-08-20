@@ -138,6 +138,44 @@ dig +short @$NS q1.lab.internal A
 # 채점: VPC 내 EC2 nslookup(172) vs 외부 nslookup(54) 비교
 ```
 
+## Terraform [검증됨: apply→dig 54.0.0.10 + weighted→destroy]
+
+`terraform-route53/main.tf` — split-view(public+private zone, 같은 이름) + weighted. `vpc_id` 변수 필요.
+
+```bash
+cd terraform-route53
+terraform apply -auto-approve -var "vpc_id=$(aws ec2 describe-vpcs --filters Name=tag:Name,Values=<vpc> --query 'Vpcs[0].VpcId' --output text)"
+NS=$(terraform output -json public_ns | python3 -c 'import sys,json;print(json.load(sys.stdin)[0])')
+dig +short @$NS q1.lab-tf.internal A   # 54.0.0.10
+terraform destroy -auto-approve -var "vpc_id=..."
+```
+핵심:
+```hcl
+resource "aws_route53_zone" "pub"  { name = var.zone }
+resource "aws_route53_zone" "priv" { name = var.zone
+  vpc { vpc_id = var.vpc_id } }          # 같은 이름 + VPC 연결 = private view
+resource "aws_route53_record" "w_blue" {
+  set_identifier = "blue"
+  weighted_routing_policy { weight = 80 }   # 정책별 전용 블록
+}
+```
+- 라우팅 정책마다 전용 블록: `weighted_routing_policy`·`failover_routing_policy`·`latency_routing_policy`·`geolocation_routing_policy`·`multivalue_answer_routing_policy`.
+- alias 는 `alias { name, zone_id, evaluate_target_health }` 블록(ttl/records 대신).
+
+## Console 팁
+
+- **라우팅 정책 마법사**: 레코드 생성 시 정책을 드롭다운으로. failover 는 health check 를 폼에서 연결. geolocation 지도 UI.
+- **Traffic flow**(고급): 정책을 시각적 트리로 조합(비용 있음). 복잡한 다단계 라우팅에.
+- **Resolver**: inbound/outbound endpoint·규칙을 폼으로. 하이브리드 DNS.
+- **테스트 레코드**: 레코드 콘솔의 "Test record" 로 정책 결과를 시뮬레이션(위치·클라이언트 IP 지정).
+
+## 참고 문서
+
+- Route53 개발자 가이드: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/
+- 라우팅 정책: https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/routing-policy.html
+- split-view(private+public): https://docs.aws.amazon.com/Route53/latest/DeveloperGuide/hosted-zones-private-considerations.html
+- Terraform `aws_route53_record`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/route53_record
+
 ## 함정
 
 - **PHZ 금지 문구**를 놓치면 split-view 를 PHZ 로 풀어서 통째로 0점. 문구 정독.
