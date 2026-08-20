@@ -86,6 +86,69 @@ curl -s -o /dev/null -w '%{http_code}\n' "https://$CF_OR_ALB/?q=1'%20OR%201=1--"
 ```
 채점(2026 task1 mark.sh): `list-web-acls` → `get-web-acl` 로 rate limit `Limit` 값 확인, 실제 curl 폭주로 403 유도.
 
+## Terraform [검증됨: WebACL(managed+rate+custom403) apply→destroy]
+
+`terraform-waf/main.tf` — WebACL + managed rule + rate limit + custom 403 body.
+
+```hcl
+resource "aws_wafv2_web_acl" "acl" {
+  scope = "REGIONAL"   # CloudFront 면 CLOUDFRONT + provider us-east-1
+  default_action {
+    allow {}
+  }
+  custom_response_body {
+    key          = "blocked"
+    content      = "Request blocked by Skills WAF"
+    content_type = "TEXT_PLAIN"
+  }
+  rule {
+    name     = "common"
+    priority = 1
+    override_action {   # managed rule = override_action
+      none {}
+    }
+    statement {
+      managed_rule_group_statement {
+        vendor_name = "AWS"
+        name        = "AWSManagedRulesCommonRuleSet"
+      }
+    }
+    visibility_config { sampled_requests_enabled = true, cloudwatch_metrics_enabled = true, metric_name = "common" }
+  }
+  rule {
+    name     = "ratelimit"
+    priority = 2
+    action {   # custom rule = action
+      block {
+        custom_response { response_code = 403, custom_response_body_key = "blocked" }
+      }
+    }
+    statement {
+      rate_based_statement { limit = 100, aggregate_key_type = "IP" }
+    }
+    visibility_config { ... }
+  }
+  visibility_config { ... }
+}
+# 연결: aws_wafv2_web_acl_association { resource_arn = <alb>, web_acl_arn = ... }
+# CloudFront: distribution 의 web_acl_id 에 ACL ARN
+```
+> **TF 검수**: `default_action`/`override_action { none {} }`/`action { block {} }` 은 **여러 줄 블록**이어야 한다(단일 라인 `{ allow {} }` 는 파싱 에러 — 실제로 밟음). managed=`override_action`, custom=`action` 구분은 CLI 와 동일.
+
+## Console 팁
+
+- **WebACL 마법사**: managed rule group 을 카탈로그에서 골라 추가(Common/KnownBadInputs/SQLi/IP reputation 등). rate limit·custom response 를 폼으로.
+- **연결 대상**: 생성 중 ALB/APIGW/CloudFront 를 선택해 바로 연결.
+- **Sampled requests / 로그**: 실시간 샘플로 어떤 룰이 무엇을 차단하는지. 룰 튜닝에 필수.
+- **Rule 순서**: 콘솔에서 드래그로 priority 조정.
+
+## 참고 문서
+
+- WAF 개발자 가이드: https://docs.aws.amazon.com/waf/latest/developerguide/
+- Managed rule groups: https://docs.aws.amazon.com/waf/latest/developerguide/aws-managed-rule-groups-list.html
+- Rate-based rule: https://docs.aws.amazon.com/waf/latest/developerguide/waf-rule-statement-type-rate-based.html
+- Terraform `aws_wafv2_web_acl`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/wafv2_web_acl
+
 ## 함정
 
 - **scope 2개** — CloudFront 는 반드시 `--scope CLOUDFRONT --region us-east-1`. ALB/APIGW 는 REGIONAL.

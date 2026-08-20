@@ -121,6 +121,57 @@ aws servicediscovery list-instances --region $R --service-id $SDID --query 'Inst
 aws logs describe-log-streams --region $R --log-group-name /ecs/lab --query 'logStreams[].logStreamName' --output text
 ```
 
+## Terraform [validate 통과]
+
+```hcl
+resource "aws_ecs_cluster" "c" { name = "lab" }
+resource "aws_ecs_task_definition" "t" {
+  family                   = "lab"
+  requires_compatibilities = ["FARGATE"]
+  network_mode             = "awsvpc"
+  cpu                      = "256"
+  memory                   = "512"
+  execution_role_arn       = aws_iam_role.exec.arn
+  container_definitions = jsonencode([{
+    name         = "web"
+    image        = "public.ecr.aws/nginx/nginx:latest"
+    essential    = true
+    portMappings = [{ containerPort = 80 }]
+    logConfiguration = { logDriver = "awslogs", options = { "awslogs-group" = "/ecs/lab", "awslogs-region" = "ap-northeast-2", "awslogs-stream-prefix" = "web" } }
+  }])
+}
+resource "aws_ecs_service" "s" {
+  name            = "lab"
+  cluster         = aws_ecs_cluster.c.id
+  task_definition = aws_ecs_task_definition.t.arn
+  desired_count   = 1
+  launch_type     = "FARGATE"
+  network_configuration {
+    subnets         = [var.subnet]
+    security_groups = [var.sg]
+  }
+  # CloudMap 연동:
+  # service_registries { registry_arn = aws_service_discovery_service.web.arn }
+  # ALB 연동:
+  # load_balancer { target_group_arn = ..., container_name = "web", container_port = 80 }
+}
+```
+- **`container_definitions` 는 jsonencode()** — JSON 문자열. CloudMap 은 `service_registries`, ALB 는 `load_balancer` 블록.
+
+## Console 팁
+
+- **클러스터/서비스 생성 마법사**: Fargate·네트워크·ALB·CloudMap 연동을 단계 폼으로. taskRole/executionRole 을 드롭다운.
+- **Task Definition JSON 편집기**: 콘솔에서 JSON 직접 편집 + 유효성 검사. 컨테이너·볼륨·로그 드라이버를 폼 또는 JSON.
+- **Service 이벤트/배포**: 왜 task 가 안 뜨는지(이미지 pull 실패·헬스체크·용량) 이벤트 로그로 즉시.
+- **Exec into container**: 콘솔에서 실행 중 task 에 셸(ECS Exec 활성 시).
+
+## 참고 문서
+
+- ECS 개발자 가이드: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/
+- FireLens: https://docs.aws.amazon.com/AmazonECS/latest/developerguide/using_firelens.html
+- 서비스 디스커버리(CloudMap): https://docs.aws.amazon.com/AmazonECS/latest/developerguide/service-discovery.html
+- Terraform `aws_ecs_service`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecs_service
+
 ## 함정
 
 - **taskRole vs executionRole** — execution 은 pull+로그(ECS 가 사용), task 는 앱 권한(컨테이너가 사용). 앱이 S3/DDB 접근하면 taskRole 에.

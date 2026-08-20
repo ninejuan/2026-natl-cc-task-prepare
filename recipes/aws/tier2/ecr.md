@@ -65,6 +65,34 @@ aws ecr get-lifecycle-policy --region $R --repository-name lab-ecr --query lifec
 ```
 채점 방식(2026 task1 mark.sh): `describe-repositories` 로 scanOnPush·mutability·encryptionType, `describe-images` 로 태그 목록, `describe-image-scan-findings` 로 취약점 수.
 
+## Terraform [검증됨: IMMUTABLE/scanOnPush apply→destroy]
+
+```hcl
+resource "aws_ecr_repository" "r" {
+  name                 = var.name
+  image_tag_mutability = "IMMUTABLE"
+  image_scanning_configuration { scan_on_push = true }
+  force_delete = true    # destroy 시 이미지까지 삭제
+  # encryption_configuration { encryption_type = "KMS", kms_key = ... }  # CMK
+}
+resource "aws_ecr_lifecycle_policy" "l" {
+  repository = aws_ecr_repository.r.name
+  policy     = jsonencode({ rules = [ { rulePriority = 1, ... } ] })
+}
+```
+
+## Console 팁
+
+- **리포 생성 폼**: 태그 불변·스캔·암호화를 체크박스로. lifecycle 룰을 UI 빌더로.
+- **푸시 명령**: 리포 콘솔의 "View push commands" 가 `get-login-password` + build + tag + push 4줄을 계정/리전 채워 보여준다. 복붙.
+- **스캔 결과**: 이미지 목록에서 취약점 수를 배지로. 클릭하면 CVE 상세.
+
+## 참고 문서
+
+- ECR 사용 설명서: https://docs.aws.amazon.com/AmazonECR/latest/userguide/
+- 라이프사이클 정책: https://docs.aws.amazon.com/AmazonECR/latest/userguide/LifecyclePolicies.html
+- Terraform `aws_ecr_repository`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/ecr_repository
+
 ## 함정
 
 - **IMMUTABLE 이면 같은 태그 재푸시 실패** — CI 에서 `latest` 를 계속 밀면 막힌다. latest 예외가 필요하면 `IMMUTABLE_WITH_EXCLUSION`.

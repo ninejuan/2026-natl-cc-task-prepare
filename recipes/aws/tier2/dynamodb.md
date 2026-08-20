@@ -124,6 +124,56 @@ aws dynamodb describe-continuous-backups --region $R --table-name lab-ddb \
   --query 'ContinuousBackupsDescription.PointInTimeRecoveryDescription.PointInTimeRecoveryStatus' --output text
 ```
 
+## Terraform [검증됨: GSI/LSI/Stream/PITR apply→destroy]
+
+`terraform-dynamodb/main.tf` — GSI+LSI+Stream+TTL+PITR 다 갖춘 테이블.
+
+```hcl
+resource "aws_dynamodb_table" "t" {
+  billing_mode = "PAY_PER_REQUEST"
+  hash_key     = "pk"
+  range_key    = "sk"
+  attribute { name = "pk"     type = "S" }
+  attribute { name = "sk"     type = "S" }
+  attribute { name = "gsipk"  type = "S" }
+  attribute { name = "lsi_sk" type = "N" }
+  global_secondary_index {
+    name = "gsi1"  hash_key = "gsipk"  projection_type = "ALL"
+  }
+  local_secondary_index {
+    name = "lsi1"  range_key = "lsi_sk"  projection_type = "ALL"   # LSI 는 테이블과 함께만
+  }
+  stream_enabled   = true
+  stream_view_type = "NEW_AND_OLD_IMAGES"
+  ttl { attribute_name = "ttl"  enabled = true }
+  point_in_time_recovery { enabled = true }
+}
+```
+> **v6 provider 검수**: `hash_key`/`range_key` 는 deprecated warning 이 뜨지만 **여전히 동작한다**(apply 검증됨). warning 을 없애려면 신형 `key_schema` 블록:
+> ```hcl
+> global_secondary_index {
+>   name = "gsi1"
+>   key_schema { attribute_name = "gsipk"  key_type = "HASH" }
+>   projection_type = "ALL"
+> }
+> ```
+> `key_schema` 는 **다중 속성 키**(HASH 여러 개 등)를 표현할 때만 실익. 단일 키면 `hash_key` 가 짧다. 둘은 상호 배타적 동등 문법이라 섞지 말 것.
+- 시드까지: `aws_dynamodb_table_item`(위 apigateway TF 참조).
+
+## Console 팁
+
+- **테이블 생성 폼**: PK/SK·GSI/LSI·용량을 클릭으로. LSI 는 생성 화면에만 나온다(나중 추가 불가를 UI 가 강제).
+- **PITR/백업**: Backups 탭에서 PITR 토글 + 특정 시점 복원을 캘린더로. CLI 복원 메타데이터 조립보다 쉽다.
+- **항목 편집기**: Explore items 에서 JSON/폼으로 항목 CRUD, 쿼리(PK/GSI)를 UI 로 — 채점 데이터 확인·시드에 유용.
+- **CloudWatch Contributor Insights**: 핫 파티션 분석.
+
+## 참고 문서
+
+- DynamoDB 개발자 가이드: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/
+- GSI/LSI: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/SecondaryIndexes.html
+- PITR: https://docs.aws.amazon.com/amazondynamodb/latest/developerguide/PointInTimeRecovery.html
+- Terraform `aws_dynamodb_table`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table
+
 ## 함정
 
 - **LSI 는 테이블 생성 시에만** — 나중에 못 붙인다. GSI 는 `update-table` 로 추가 가능.
