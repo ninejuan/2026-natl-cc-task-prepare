@@ -96,6 +96,39 @@ aws stepfunctions describe-state-machine --region $R --state-machine-arn "$SM" -
 # 실행 후 결과를 DynamoDB 등 대상 리소스에서 확인 (2025 채점은 put-item 으로 값 세팅 → start-execution → get-item 으로 검증)
 ```
 
+## Terraform [검증됨: apply→execute SUCCEEDED→destroy]
+
+`../terraform-sfn/main.tf` — state machine + IAM + DynamoDB(시드 포함). ASL 을 `jsonencode()` 로 인라인(HCL 객체 → JSON). `.asl.json` 파일을 그대로 쓰려면 `definition = file("inventory-ddb.asl.json")`.
+
+```bash
+cd ../terraform-sfn
+terraform init && terraform apply -auto-approve
+SM=$(terraform output -raw state_machine_arn)
+sleep 10   # ★ IAM 전파 — 아래 함정
+aws stepfunctions start-execution --region ap-northeast-2 --state-machine-arn "$SM" --input '{"sales":30}'
+terraform destroy -auto-approve
+```
+- ASL 을 HCL `jsonencode()` 로 쓰면 `"N.$" = "States.Format(...)"` 처럼 **동적 키(`.$`)를 문자열 키로** 그대로 넣을 수 있다. TF 보간 `${...}` 과 ASL `$.x` 는 안 겹친다(ASL 은 문자열 안).
+- 파일 분리 선호 시: `definition = file("${path.module}/x.asl.json")` — 검증된 `.asl.json` 재사용.
+- `type = "EXPRESS"` + `publish = true` 로 버전 관리.
+
+> ⚠️ **IAM 전파 지연(실검증)**: `apply` 직후 6초 뒤 실행하면 role 이 아직 전파 안 돼 `TaskFailed`(AccessDenied) 로 FAILED. 10초 여유 주면 SUCCEEDED. TF create 는 role 전파를 재시도하지만, **실행(start-execution)은 별개** — apply 후 잠깐 대기 후 실행하라.
+
+## Console 팁
+
+- **Workflow Studio**: 드래그앤드롭으로 상태를 배치하고 ASL 을 자동 생성. Choice/Map/Parallel 을 시각적으로 짤 때 훨씬 빠르다. 완성 후 "Definition" 탭에서 ASL 을 복사해 `.asl.json` 으로.
+- **실행 그래프**: 실행 상세에서 각 상태의 입력/출력을 색으로. 어느 상태에서 어떤 데이터로 실패했는지 즉시 보인다(CLI `get-execution-history` 보다 빠름).
+- **Data flow simulator**: InputPath/Parameters/ResultSelector/ResultPath 를 미리 시뮬레이션. 데이터 흐름 디버깅의 핵심 도구.
+- 대회 팁: **Workflow Studio 로 만들고 ASL 뽑아 TF/CLI 로 재현**. 복잡한 상태 기계는 손코딩보다 스튜디오가 정확하다.
+
+## 참고 문서
+
+- ASL 스펙: https://docs.aws.amazon.com/step-functions/latest/dg/concepts-amazon-states-language.html
+- SDK 서비스 통합: https://docs.aws.amazon.com/step-functions/latest/dg/supported-services-awssdk.html
+- optimized 통합(.sync/.waitForTaskToken): https://docs.aws.amazon.com/step-functions/latest/dg/connect-to-resource.html
+- intrinsic 함수: https://docs.aws.amazon.com/step-functions/latest/dg/amazon-states-language-intrinsic-functions.html
+- Terraform `aws_sfn_state_machine`: https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sfn_state_machine
+
 ## 함정
 
 - **ARN 조립 금지**(위 zsh 경고). 조회로 받아라.
