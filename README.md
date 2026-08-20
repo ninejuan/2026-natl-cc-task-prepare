@@ -18,6 +18,12 @@ export R=ap-northeast-2    # 해당 항목/모듈이 지정한 리전
 
 ## 결정 트리 — 문제에 이 단어가 보이면
 
+### ★ 2과제 모듈이면 먼저 → [`recipes/topics/`](recipes/topics/) (21토픽 플레이북)
+
+2과제는 가이드 모듈 중 4개 출제. 모듈 단위 완성 경로 + 케이스 다양성 + 반칙 자가검사가 토픽별 README 에 있다. 가이드 2종(2025·2026) 합집합 21토픽 전수 커버. 결정 트리는 [`recipes/topics/README.md`](recipes/topics/README.md).
+
+VPC Lattice · Network Firewall · RDS Connection · Client VPN · Storage protect · ECS Logging · Message Queue · Monitoring · EFS security · WAF · CI/CD · NoSQL · CDN · Workflow · Cloud governance · Real-time analytics · MSK · EKS Scaling · Container logging · Keycloak SSO · REST API
+
 ### 쿠버네티스 (코어) → [`recipes/k8s/`](recipes/k8s/)
 
 | 문구 키워드 | 위치 |

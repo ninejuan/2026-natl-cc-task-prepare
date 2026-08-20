@@ -29,10 +29,10 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 
 | # | 케이스 | 방식 | 검증 |
 |---|---|---|---|
-| 01 | `cases/01-rds-proxy/` | RDS Proxy + Secrets | 스크립트(RDS ~10분) |
-| 02 | `cases/02-data-api/` | Aurora Serverless v2 + Data API | 스크립트 + boto3 |
+| 01 | `cases/01-rds-proxy/` | RDS Proxy + Secrets | ✅ live(proxy available, TLS, SECRETS, cluster target) |
+| 02 | `cases/02-data-api/` | Aurora Serverless v2 + Data API | ✅ live(CREATE/INSERT/SELECT 왕복 + boto3 query.py) |
 | 03 | `cases/03-iam-auth/` | IAM DB 인증(토큰) | 스크립트 |
-| 04 | `cases/04-secrets-rotation/` | Secrets Manager + 회전 | 스크립트 |
+| 04 | `cases/04-secrets-rotation/` | Secrets Manager + 회전 | 스크립트(managed secret 은 02 에서 확인) |
 
 ## 개념 검증 (채점자 문체)
 
@@ -62,6 +62,8 @@ aws rds describe-db-clusters --region $R --query 'DBClusters[?HttpEndpointEnable
 
 - **Data API 는 Aurora 전용**(PostgreSQL/MySQL). 일반 RDS 인스턴스는 불가. `--enable-http-endpoint`.
 - **Serverless v2 는 `engine_mode=provisioned` + `db.serverless` 인스턴스** — 옛 Serverless v1(`engine_mode=serverless`)과 다르다. context7 확인 필수.
+- **★ `--skip-final-snapshot` 은 create 옵션 아님**(실측) — delete-db-cluster 전용. create 에 넣으면 "Unknown options".
+- **★ Data API 는 cluster-available 만으론 부족**(실측) — 인스턴스도 available 이어야. creating 중이면 `DatabaseNotFoundException: Cannot find DBInstance in DBCluster`. `wait db-instance-available` 까지.
 - **RDS Proxy 는 Secrets Manager 필수** — 평문 자격증명 불가. `iam_auth=REQUIRED` 면 클라이언트도 IAM 토큰.
 - **Proxy·DB 는 같은 VPC 서브넷 2개 AZ 이상** — subnet group 필요.
 - **IAM 인증 토큰은 15분 유효** — `aws rds generate-db-auth-token` + SSL 필수.
