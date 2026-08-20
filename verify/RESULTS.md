@@ -147,6 +147,25 @@ tier3 lab 전량 정리.
 - **S3 버킷 자기잠금**: `Action:"s3:*"` + 조건 Deny(VPCe/IP)를 apply 하면 `s3:PutBucketPolicy`/`DeleteBucketPolicy` 까지 Deny → VPCe 밖 IAM user 본인이 정책 해제 불가 → **버킷 영구 잠김(root 만 해제)**. 실제로 테스트 버킷 잠가서 root 로 삭제함. **현장엔 root 없음** → 데이터 액션만 나열하도록 컬렉션 수정 + 함정 명시.
 - Route53 하위위임 NS 레코드는 존 삭제 시 apex NS/SOA 와 구분해 따로 삭제해야 함(안 그러면 HostedZoneNotEmpty).
 
+## 2과제 토픽 플레이북 (recipes/topics/)
+
+### Wave A — 신규·고가 (context7 최신문법 확인 + live)
+
+| 토픽 | 케이스 | 검증 강도 | 발견 |
+|---|---|---|---|
+| VPC Lattice | 01 Lambda service | 실행(E2E) | service network+service+listener+LAMBDA TG+2 association 전부 ACTIVE. VPC 전용 생성. |
+| VPC Lattice | 02 EC2 instance target | 스크립트(EC2 과금) | INSTANCE TG+health check 문법. 실행은 01 로 대체 |
+| VPC Lattice | 03 path/header routing | 실행 | pathMatch/headerMatches/fixedResponse rule 실제 create |
+| VPC Lattice | 04 weighted | 실행 | 90:10 가중 forward rule 실제 create |
+| VPC Lattice | 05 auth policy | 실행 | service AWS_IAM 전환 + put-auth-policy Active |
+
+**VPC Lattice 발견 함정(실측)**:
+- Lambda 타깃은 항상 `UNAVAILABLE`(reasonCode HealthCheckNotSupported) = **정상**. Lattice 는 Lambda 헬스체크 안 함. TG 가 ACTIVE 면 OK.
+- **rule priority 1~2000**(초과 ValidationException), **fixedResponse 는 404·500 만**(403/401/503 unsupported).
+- **API throttle 빡셈** — 연속 create 시 ThrottlingException. sleep+재시도 필수.
+- **VPC association 삭제는 ENI 회수 ~60-90s** — 안 기다리면 delete-service-network ConflictException, delete-vpc DependencyViolation. teardown 폴링+재시도로 처리.
+- 전량 정리 확인(svc/TG/net/VPC 0).
+
 ## 발견 함정 총정리 (전 카드 반영)
 - **zsh ARN modifier**: `"$VAR:영문자"` → `:r`/`:s`/`:l` 로 잘림. `${VAR}:...` 중괄호 또는 조회. heredoc 안에서도 발생.
 - Firehose `DynamicPartitioningConfiguration`(not `DynamicPartitioning`).
