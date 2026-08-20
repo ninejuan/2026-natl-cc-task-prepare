@@ -1,0 +1,2 @@
+FROM public.ecr.aws/nginx/nginx:stable
+RUN echo "Cloud Skills 2026 CodeBuild" > /usr/share/nginx/html/index.html

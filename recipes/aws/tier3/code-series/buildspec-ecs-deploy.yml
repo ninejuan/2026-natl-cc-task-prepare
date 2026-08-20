@@ -1,0 +1,20 @@
+# CodePipeline + CodeBuild: 이미지 빌드 후 ECS 배포용 imagedefinitions.json 생성.
+# CodePipeline 의 ECS deploy 액션이 이 artifact 를 읽어 서비스를 롤링 업데이트한다.
+version: 0.2
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
+      - IMAGE_TAG=${CODEBUILD_RESOLVED_SOURCE_VERSION:-latest}
+  build:
+    commands:
+      - docker build -t $ECR_URI/$IMAGE_REPO:$IMAGE_TAG .
+      - docker push $ECR_URI/$IMAGE_REPO:$IMAGE_TAG
+  post_build:
+    commands:
+      # ECS 배포 액션이 읽는 파일. container name 은 taskdef 의 name 과 일치해야 한다.
+      - printf '[{"name":"%s","imageUri":"%s"}]' "$CONTAINER_NAME" "$ECR_URI/$IMAGE_REPO:$IMAGE_TAG" > imagedefinitions.json
+      - cat imagedefinitions.json
+artifacts:
+  files:
+    - imagedefinitions.json
