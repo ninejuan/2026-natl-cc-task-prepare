@@ -8,6 +8,8 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 ```
 > ⚠️ ARN 조립 시 `${R}:...` 중괄호 또는 조회로. (zsh modifier 함정)
 
+> **코드**: `kinesis/producer.py`(put_records 배치 발행, 실검증), `kinesis/transform-lambda.py`(Firehose 변환), `kinesis/firehose-parquet-conf.json`(JSON→Parquet 변환 설정).
+
 Data Streams(샤드 기반 스트림)와 Firehose(→S3/OpenSearch 배달)는 다른 서비스다. **실시간 분석 파이프라인은 보통 둘을 잇는다.**
 
 ---

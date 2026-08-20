@@ -1,0 +1,32 @@
+{
+  "_comment": "Firehose JSON->Parquet 변환 설정. --extended-s3-destination-configuration 에 넣는다. DataFormatConversionConfiguration 이 핵심 — Glue 테이블 스키마를 참조해 컬럼형(Parquet)으로 저장한다. <BUCKET>/<ACCT>/<GLUE_DB>/<GLUE_TABLE>/<FHROLE> 치환.",
+  "RoleARN": "<FHROLE>",
+  "BucketARN": "arn:aws:s3:::<BUCKET>",
+  "Prefix": "parquet/dt=!{partitionKeyFromQuery:dt}/",
+  "ErrorOutputPrefix": "errors/",
+  "BufferingHints": { "SizeInMBs": 128, "IntervalInSeconds": 60 },
+  "DynamicPartitioningConfiguration": { "Enabled": true },
+  "ProcessingConfiguration": {
+    "Enabled": true,
+    "Processors": [
+      {
+        "Type": "MetadataExtraction",
+        "Parameters": [
+          { "ParameterName": "MetadataExtractionQuery", "ParameterValue": "{dt:.dt}" },
+          { "ParameterName": "JsonParsingEngine", "ParameterValue": "JQ-1.6" }
+        ]
+      }
+    ]
+  },
+  "DataFormatConversionConfiguration": {
+    "Enabled": true,
+    "InputFormatConfiguration": { "Deserializer": { "OpenXJsonSerDe": {} } },
+    "OutputFormatConfiguration": { "Serializer": { "ParquetSerDe": { "Compression": "SNAPPY" } } },
+    "SchemaConfiguration": {
+      "RoleARN": "<FHROLE>",
+      "DatabaseName": "<GLUE_DB>",
+      "TableName": "<GLUE_TABLE>",
+      "Region": "ap-northeast-2"
+    }
+  }
+}

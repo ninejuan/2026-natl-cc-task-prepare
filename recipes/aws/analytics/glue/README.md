@@ -52,7 +52,7 @@ aws glue get-table --region $R --database-name lab_db --name <table> \
 
 ## 케이스 B — ETL Job (JSON → Parquet)
 
-`etl_json_to_parquet.py` 참조. S3 JSON 을 읽어 타입 정리 후 Parquet(dt 파티션)로 저장.
+`etl_json_to_parquet.py`(변환·Parquet) 또는 `etl_aggregate_join.py`(집계+조인+DQ, Spark SQL) 참조. S3 JSON 을 읽어 타입 정리 후 Parquet(dt 파티션)로 저장.
 
 ```bash
 # 스크립트를 S3 에 업로드

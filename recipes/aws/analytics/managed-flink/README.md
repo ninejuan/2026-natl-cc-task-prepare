@@ -60,6 +60,12 @@ aws kinesisanalyticsv2 describe-application --region $R --application-name lab-f
 
 RUNNING 되면 **콘솔에서 "Open in Apache Zeppelin"** → 노트북에 `notebook-kinesis-windows.sql` 의 문단을 붙여 실행. CLI 로 SQL 직접 실행은 없다(Zeppelin UI 기반).
 
+SQL 노트북 예제:
+- `notebook-kinesis-windows.sql` — Kinesis 소스 + TUMBLE/HOP/SESSION 윈도우 + S3 싱크
+- `notebook-msk-source.sql` — MSK(Kafka) 소스, Kafka→Kafka, 실시간 매출 집계
+- `notebook-topn-join.sql` — 윈도우 Top-N, 차원 조인, 인터벌 조인
+- `notebook-anomaly-s3sink.sql` — 급증/임계 이상탐지, Parquet 파티션 싱크
+
 핵심 SQL 패턴 (`notebook-kinesis-windows.sql` 참조):
 - **소스 테이블**: `CREATE TABLE ... WITH ('connector'='kinesis', ...)` + `WATERMARK`
 - **TUMBLE**: 겹치지 않는 고정 창. `TABLE(TUMBLE(TABLE t, DESCRIPTOR(event_time), INTERVAL '1' MINUTE))`

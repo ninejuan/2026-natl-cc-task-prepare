@@ -8,6 +8,8 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 BUCKET=lab-analytics-$ACCT   # 데이터 + 결과 저장
 ```
 
+> **쿼리 라이브러리**: `queries/ddl.sql`(JSON/Parquet/CSV 테이블·projection), `queries/analysis.sql`(집계·윈도우·UNNEST·근사집계·조인), `queries/ctas-etl.sql`(CTAS·INSERT·UNLOAD). 전부 실 API 검증.
+
 Athena 는 S3 데이터를 SQL 로 조회. 테이블 정의는 ① Glue crawler 자동 ② DDL 수동 ③ **partition projection**(crawler 없이, 아래 권장).
 
 ---
