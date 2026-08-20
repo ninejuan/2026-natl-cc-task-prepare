@@ -109,6 +109,32 @@ tier1 lab 정리: Route53 zone/HC 삭제 완료. CloudFront 는 disable→반영
 tier2 lab 전량 정리(DDB·S3 버전버킷·ECS·CloudMap·WAF·역할). 
 S3 버전관리 버킷은 버전+삭제마커 제거 후 rb (카드 정리 절차 반영).
 
+## recipes/aws/tier3 — 실계정 검증
+
+| 대상 | 결과 | 비고 |
+|---|---|---|
+| code-series CodeBuild | ✓ | S3소스→docker build→ECR push v1. 로컬 Docker 없이. DOWNLOAD_SOURCE 403·privilegedMode 함정 발견 |
+| efs 파일시스템+AP+정책 | ✓ | available, access point(/app POSIX1000), fs policy |
+| config-ssm Parameter Store | ✓ | String/SecureString(복호화)/StringList/경로조회 |
+| cloudwatch 대시보드·알람·metric filter | ✓ | dashboard, alarm(INSUFFICIENT_DATA), metric filter |
+| secretsmanager 시크릿·정책 | ✓ | 시크릿 조회, resource policy |
+| backup vault·plan | ✓ | vault, plan(cron 0 5) |
+| cloudmap | ✓ | (tier2 ECS 연동에서 task IP 자동등록 검증) |
+| mq RabbitMQ 브로커 | ✓ | RUNNING(m7g.large, t3.micro 미지원), amqps 5671 |
+| iam-federation Assume+ExternalID | ✓ | 올바른 ID assume 성공, 없거나틀리면 AccessDenied |
+
+tier3 lab 전량 정리.
+- ⚠️ Flink Studio(analytics 검증 때 생성)가 삭제 실패로 READY 로 수 시간 잔존 → 최종 스캔에서 발견·재삭제. **삭제 요청 후 상태 재확인 필요**(delete-application 이 조용히 실패할 수 있음).
+
+## 발견 함정 총정리 (전 카드 반영)
+- **zsh ARN modifier**: `"$VAR:영문자"` → `:r`/`:s`/`:l` 로 잘림. `${VAR}:...` 중괄호 또는 조회. heredoc 안에서도 발생.
+- Firehose `DynamicPartitioningConfiguration`(not `DynamicPartitioning`).
+- MSK: kafka-python-ng 2.2+ AWS_MSK_IAM 내장, botocore `AWS_DEFAULT_REGION` 필요, SG self-inbound 9098.
+- Lambda Function URL SCP 403(org 계정).
+- CodeBuild: S3 소스 권한, privilegedMode:true.
+- RabbitMQ t3.micro 미지원. Glue Parquet SUM(int)=INT64.
+- 삭제 요청 후 재확인(Flink delete 조용히 실패).
+
 ## 미검증 / 확인 필요
 
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
