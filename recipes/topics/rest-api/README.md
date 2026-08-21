@@ -27,7 +27,7 @@
 |---|---|---|---|
 | 01 | APIGW REST + Lambda + DDB CRUD | DynamoDB | `cases/01-apigw-rest/` ✅ live(POST→GET 왕복) |
 | 02 | HTTP API(v2) + Lambda | DynamoDB | ✅ live(POST→GET 왕복, base64 body 함정 수정) |
-| 03 | ALB → Lambda(다른 이벤트 형식) | DynamoDB | `cases/03-alb-lambda/` ✓ |
+| 03 | ALB → Lambda(다른 이벤트 형식) | DynamoDB | ✅ live(ALB+Lambda TG 등록, ALB 이벤트로 핸들러가 ALB포맷 응답 반환) |
 | 04 | DocumentDB CRUD | DocumentDB | 코드(handler.py) — DocDB 클러스터+VPC 필요 |
 | 05 | 입력 검증 + 에러 응답 | - | `cases/05-input-validation/` ✅ live(필수필드 누락→400) |
 

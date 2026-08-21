@@ -27,7 +27,7 @@
 |---|---|---|---|
 | 01 | FS policy — IAM 마운트 강제 | AccessedViaMountTarget + 특정 role | `cases/01-iam-accesspoint/` ✅ live |
 | 02 | Access Point POSIX 격리 | uid/gid + root dir per 앱 | `cases/02-access-point/` ✅ live |
-| 03 | 특정 role 만 쓰기 | FS policy Principal 제한 + 나머지 Deny | `cases/03-role-scoped/` |
+| 03 | 특정 role 만 쓰기 | FS policy Principal 제한 + 나머지 Deny | ✅ live(EFS+정책 apply, Allow/Deny 2 Sid 확인) |
 
 ## 검증 (채점자 문체)
 
