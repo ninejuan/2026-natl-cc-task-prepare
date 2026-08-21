@@ -1,6 +1,6 @@
 # kubectl delete 하면 실제 S3 버킷이 지워진다. k8s 객체만 지우려면 deletionPolicy: Orphan.
 # 버킷 이름은 metadata.name 이 아니라 아래 annotation 이 결정한다.
-apiVersion: s3.aws.upbound.io/v1beta1
+apiVersion: s3.aws.upbound.io/v1beta2   # ★ v1beta1 은 provider v2.6.0 부터 deprecated
 kind: Bucket
 metadata:
   name: skills-bucket

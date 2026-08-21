@@ -1,0 +1,8 @@
+# ★ Composition 이 Pipeline 모드만 지원하므로, patch/transform 을 수행할 Function 을 먼저 깐다.
+#   이게 없으면 Composition 이 적용돼도 아무 리소스도 안 만들어진다.
+apiVersion: pkg.crossplane.io/v1
+kind: Function
+metadata:
+  name: function-patch-and-transform
+spec:
+  package: xpkg.crossplane.io/crossplane-contrib/function-patch-and-transform:v0.10.9

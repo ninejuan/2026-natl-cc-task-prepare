@@ -1,4 +1,4 @@
-apiVersion: dynamodb.aws.upbound.io/v1beta1
+apiVersion: dynamodb.aws.upbound.io/v1beta2   # ★ v1beta1 은 provider v2.6.0 부터 deprecated
 kind: Table
 metadata:
   name: skills-table
@@ -13,8 +13,8 @@ spec:
     attribute:
       - name: booking_id
         type: S
-    pointInTimeRecovery:
-      - enabled: true
+    pointInTimeRecovery:            # ★ v1beta2 에서 list → object 로 바뀜
+      enabled: true
     tags:
       Name: skills-crossplane-table
   providerConfigRef:

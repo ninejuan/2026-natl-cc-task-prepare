@@ -1,5 +1,6 @@
 # scheme, 인증서 등 ALB 고유 설정. Gateway 의 spec.infrastructure.parametersRef 가 이걸 가리킨다.
-apiVersion: gateway.k8s.aws/v1beta1
+# CRD 는 LBC 차트의 crds/crds.yaml 이 아니라 **crds/gateway-crds.yaml** 에 들어 있다(따로 설치해야 함).
+apiVersion: gateway.k8s.aws/v1        # ★ v1beta1 은 deprecated (LBC v3.x). 서버가 경고를 뱉는다
 kind: LoadBalancerConfiguration
 metadata:
   name: alb-lb-config

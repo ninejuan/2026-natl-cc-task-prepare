@@ -1,8 +1,12 @@
 # 개발자가 실제로 쓰는 최종 인터페이스. 이 한 파일로 S3 버킷 + DynamoDB 테이블이 생긴다.
-#   kubectl get appstorage -n app
+#   kubectl get xappstorage -n app
 #   kubectl get managed
+#
+# ★ Crossplane v2 부터는 XR 이 네임스페이스 리소스라 "Claim(AppStorage)" 을 따로 만들지 않는다.
+#   XR(XAppStorage)을 네임스페이스에 직접 만들면 된다.
+#   (v1 시절엔 XRD 의 claimNames 로 만들어지는 AppStorage 를 썼다 — 그 문법은 이제 안 통한다.)
 apiVersion: skills.kr/v1alpha1
-kind: AppStorage
+kind: XAppStorage
 metadata:
   name: book
   namespace: app
