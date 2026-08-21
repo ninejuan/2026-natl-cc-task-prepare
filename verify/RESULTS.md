@@ -500,3 +500,26 @@ BadRequestException: Broker engine type [RabbitMQ] does not support host instanc
 → **ActiveMQ 를 퍼블릭으로 쓰려면 SG 인바운드를 직접 열어야 한다**:
 OpenWire `61617` / AMQPS `5671` / STOMP `61614` / MQTT `8883` / WSS `61619` / 웹콘솔 `8162`.
 "publicly accessible = 바로 붙는다" 가 아니다. 이걸 모르면 원인 못 찾고 시간만 버린다.
+
+## 4차 추가 — Config rule + 자동 remediation (eu-west-3)
+
+```
+put-configuration-recorder(JSON) → recording=true
+put-config-rule INCOMING_SSH_DISABLED (관리형)
+put-remediation-configurations → AWS-DisablePublicAccessForSecurityGroup, Automatic=true
+
+위반 SG 생성(0.0.0.0/0:22)
+ → get-compliance-details-by-config-rule: NON_COMPLIANT  sg-0737389f…
+ → describe-remediation-execution-status: SUCCEEDED  (23:01:23)
+ → describe-security-groups … IpPermissions: []        ← ★ 자동으로 규칙이 제거됨
+```
+
+- **`put-configuration-recorder` 는 반드시 JSON**(`file://recorder.json`). shorthand 는 `allSupported=false` 를
+  문자열로 보내 `Invalid type for parameter … valid types: <class 'bool'>` 로 죽는다(실측).
+- **recorder 가 리소스를 "기록"한 뒤에야 rule 이 평가한다.** 새로 만든 SG 는 discovery 에 수 분 걸린다 —
+  `start-config-rules-evaluation` 을 바로 때려도 기존에 기록된 리소스(default SG 등)만 COMPLIANT 로 나온다.
+  `list-discovered-resources` 로 대상이 잡혔는지 먼저 확인할 것.
+- remediation 은 **SSM Automation 문서 + AutomationAssumeRole** 조합. role 에 `ec2:RevokeSecurityGroupIngress` 필요.
+  `GroupId` 파라미터는 `{"ResourceValue":{"Value":"RESOURCE_ID"}}` 로 위반 리소스를 자동 주입.
+- **EventBridge 경로(케이스 B)와 비교**: Config 는 "주기적/변경시 평가 + 조치"라 **탐지까지 수 분**이 걸린다.
+  채점이 3분 안에 결과를 보려면 **EventBridge → Lambda 즉시 복구(케이스 B)** 가 안전하다. Config 는 recorder 비용도 든다.

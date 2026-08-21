@@ -43,7 +43,7 @@ CloudTrail(SG 변경 API) → EventBridge rule → Lambda(위반 규칙 되돌�
 
 2026 후보 3모듈 채점이 정확히 이 방식이었다(mark.sh: SG 에 22/0.0.0.0/0 추가 → Lambda invoke → 180초 내 인바운드 0 확인).
 
-## 케이스 C — Config rule + remediation (recorder 필요)
+## 케이스 C — Config rule + remediation (recorder 필요) [검증됨: NON_COMPLIANT→SSM Automation SUCCEEDED→SG 인바운드 제거]
 
 ```bash
 # 1) Config recorder + delivery channel 먼저 (계정에 없으면 셋업 필요, 느림)
