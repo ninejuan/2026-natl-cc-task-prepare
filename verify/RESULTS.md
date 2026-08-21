@@ -523,3 +523,39 @@ put-remediation-configurations → AWS-DisablePublicAccessForSecurityGroup, Auto
   `GroupId` 파라미터는 `{"ResourceValue":{"Value":"RESOURCE_ID"}}` 로 위반 리소스를 자동 주입.
 - **EventBridge 경로(케이스 B)와 비교**: Config 는 "주기적/변경시 평가 + 조치"라 **탐지까지 수 분**이 걸린다.
   채점이 3분 안에 결과를 보려면 **EventBridge → Lambda 즉시 복구(케이스 B)** 가 안전하다. Config 는 recorder 비용도 든다.
+
+---
+
+# 📊 최종 검증 현황 (2026-08-21 기준)
+
+## 커버리지
+
+| 영역 | 단위 | 검증 완료 | 비고 |
+|---|---|---|---|
+| `recipes/topics/` | 케이스 97개 | **87** | 남은 10 = k8s 패스(사용자 담당) |
+| `recipes/aws/` | 케이스 헤더 95개 | **94~95** | 마지막 1건 = ActiveMQ pub/sub |
+| `recipes/k8s/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
+| `recipes/cncf/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
+
+### topics 미검증 10건 (전부 k8s/외부 의존)
+- `cicd 02` ArgoCD GitOps — k8s + git repo
+- `container-logging 01~04` — Loki/Grafana/OTel/멀티테넌트
+- `eks-scaling 01~05` — HPA/Karpenter/KEDA
+
+### 구조 감사 (기계적)
+- 인덱스 케이스 번호 ↔ 실제 디렉토리: **일치**(cicd 만 `01b`→`cases/01-codepipeline-ecs` 로 의도적 별칭)
+- 깨진 상대경로 참조: 20건 발견 → **전부 교정, 재검사 0**
+- 빈 파일/디렉토리: **0**
+- `UNVERIFIED`/`TODO` 마커: **0**
+
+## 계정 상태
+전 리전 스윕 결과 **검증용 리소스 잔재 0**.
+남은 것은 `apdev-*`(task3 연습 인프라, `StudentId=103`/`wsk2026-day3`) 와 계정에 원래 있던 것들뿐.
+Macie 미활성 복원, SAML provider 0, GitHub OIDC provider 삭제, Route53 존/헬스체크 0.
+
+## 정직하게 남는 한계
+- **Terraform 스니펫 2개는 `[validate 통과]` 수준**(`tier2/ecs.md`, `analytics/glue/`) — 실제 apply 는 안 했다.
+  나머지 TF 는 전부 `apply→검증→destroy` 완료. CLI 케이스는 두 카드 모두 live 검증됨.
+- **브라우저·외부 SaaS 가 필요한 것**: Keycloak 로그인 플로우, ArgoCD UI, Client VPN 실제 터널(GUI 클라이언트),
+  Zeppelin 노트북 화면(단, REST 로 실행·결과 확인은 완료).
+- **IdC(Identity Center)** 는 org 멤버 계정이라 **구조적으로 불가**(인스턴스 quota + 접근 거부) — 대안은 SAML 페더레이션.
