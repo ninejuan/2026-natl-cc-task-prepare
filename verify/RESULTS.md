@@ -353,5 +353,6 @@ aud        = sts.amazonaws.com
 
 - **검증 리소스 잔재 0.** ECS/ECR/VPC/IAM role/GitHub OIDC provider 전부 삭제 확인.
 - 남아 있는 건 `apdev-*`(task3 연습 인프라)와 계정에 원래 있던 것들뿐. Macie 미활성, SAML provider 0개.
-- GitHub `ninejuan/lab-gha`(private) 는 **삭제하지 않고 남겨뒀다** — 검증 증거용. AWS 쪽 role 이 없어져서
-  재실행돼도 아무 일도 일어나지 않는다. 필요 없으면 `gh repo delete ninejuan/lab-gha`.
+- GitHub `ninejuan/lab-gha`(private) 도 **삭제 완료**(`gh repo delete`). 검증 산출물은
+  `recipes/topics/cicd/cases/01-gha-ecs/`(deploy.yml·render_td.py·Dockerfile·app.py·teardown.sh)에 남겼다.
+  → **AWS·GitHub 양쪽 모두 잔재 0.**
