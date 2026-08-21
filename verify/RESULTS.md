@@ -533,7 +533,7 @@ put-remediation-configurations → AWS-DisablePublicAccessForSecurityGroup, Auto
 | 영역 | 단위 | 검증 완료 | 비고 |
 |---|---|---|---|
 | `recipes/topics/` | 케이스 97개 | **87** | 남은 10 = k8s 패스(사용자 담당) |
-| `recipes/aws/` | 케이스 헤더 95개 | **95 (전부)** | ActiveMQ 까지 완료 |
+| `recipes/aws/` | 케이스 헤더 95개 | **95 / 95 (100%)** | 전 케이스 실계정 확인 |
 | `recipes/k8s/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
 | `recipes/cncf/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
 
@@ -548,8 +548,8 @@ put-remediation-configurations → AWS-DisablePublicAccessForSecurityGroup, Auto
 - 빈 파일/디렉토리: **0**
 - `UNVERIFIED`/`TODO` 마커: **0**
 
-## 계정 상태
-전 리전 스윕 결과 **검증용 리소스 잔재 0**.
+## 계정 상태 (최종 스윕, 17개 리전)
+**검증용 리소스 잔재 0.**
 남은 것은 `apdev-*`(task3 연습 인프라, `StudentId=103`/`wsk2026-day3`) 와 계정에 원래 있던 것들뿐.
 Macie 미활성 복원, SAML provider 0, GitHub OIDC provider 삭제, Route53 존/헬스체크 0.
 
@@ -578,3 +578,16 @@ SG 를 열고 재시도하니 **원인이 SG 였음이 확정**됐다.
   STOMP `stomp+ssl://…:61614` / MQTT `mqtt+ssl://…:8883` / WSS `wss://…:61619` / 콘솔 `:8162`.
 
 → **`recipes/aws` 케이스 헤더 95개 전부 검증 표기 완료 (95/95).**
+
+---
+
+## ✅ 최종 (2026-08-21 마감)
+
+```
+recipes/topics/  케이스 97개 중 87 실계정 확인   (남은 10 = k8s 패스, 사용자 담당)
+recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
+구조 감사        깨진 참조 0 / 빈 파일·디렉토리 0 / UNVERIFIED 마커 0
+문법 검사        .sh 0오류 / .py 0오류 / .json 0오류 / .yml 0오류
+하드코딩         계정 ID·개인 IP 제거 (sts get-caller-identity 로 대체)
+계정             17개 리전 스윕 — 검증 리소스 잔재 0 (apdev-* 만 잔존, 무접촉)
+```
