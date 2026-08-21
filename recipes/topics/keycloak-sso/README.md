@@ -19,7 +19,7 @@
 |---|---|---|---|
 | 01 | SAML → IAM 2 Role (2024 원형) | IAM SAML provider + role×2 | ✅ **AWS 쪽 live**(`verify-aws-side.sh` — provider+role×2+trust 조건 실측) / Keycloak 은 사용자 k8s 패스 |
 | 02 | OIDC → IAM Role | OIDC provider | ⚠️ **live 로 제약 발견** — AWS 가 issuer 를 실제 조회해서 **사설 Keycloak 이면 생성 불가**(`cases/02-oidc/`) |
-| 03 | IdC + 외부 IdP(Keycloak) | Identity Center | iam-federation 케이스 C |
+| 03 | IdC + 외부 IdP(Keycloak) | Identity Center | ⛔ **live 로 불가 확인** — org 멤버 계정은 IdC 인스턴스 생성 불가(quota) + 조직 인스턴스 접근 거부. `cases/03-idc-external/` |
 | 04 | 그룹별 Role 매핑 | Keycloak group → SAML attr | `cases/04-group-mapping/` (AWS 쪽 role 분리는 01 에서 live) |
 
 ## 2024 원형 흐름 (SAML)
