@@ -1,0 +1,82 @@
+[
+  {
+    "Name": "common",
+    "Priority": 1,
+    "OverrideAction": {
+      "None": {}
+    },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesCommonRuleSet"
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "common"
+    }
+  },
+  {
+    "Name": "sqli",
+    "Priority": 2,
+    "OverrideAction": {
+      "None": {}
+    },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesSQLiRuleSet"
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "sqli"
+    }
+  },
+  {
+    "Name": "badinputs",
+    "Priority": 3,
+    "OverrideAction": {
+      "None": {}
+    },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesKnownBadInputsRuleSet"
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "badinputs"
+    }
+  },
+  {
+    "Name": "common-tuned",
+    "Priority": 4,
+    "OverrideAction": {
+      "None": {}
+    },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesCommonRuleSet",
+        "RuleActionOverrides": [
+          {
+            "Name": "SizeRestrictions_BODY",
+            "ActionToUse": {
+              "Count": {}
+            }
+          }
+        ]
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "common-tuned"
+    }
+  }
+]

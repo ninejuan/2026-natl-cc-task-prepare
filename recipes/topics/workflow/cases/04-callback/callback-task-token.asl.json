@@ -1,0 +1,32 @@
+{
+  "Comment": "waitForTaskToken — 외부(사람 승인/외부 시스템)가 SendTaskSuccess 로 토큰을 돌려줄 때까지 대기. SQS 에 토큰 담아 전달.",
+  "StartAt": "RequestApproval",
+  "States": {
+    "RequestApproval": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::sqs:sendMessage.waitForTaskToken",
+      "Parameters": {
+        "QueueUrl.$": "$.approvalQueueUrl",
+        "MessageBody": {
+          "orderId.$": "$.id",
+          "taskToken.$": "$$.Task.Token"
+        }
+      },
+      "TimeoutSeconds": 3600,
+      "Next": "Approved",
+      "Catch": [
+        { "ErrorEquals": ["States.Timeout"], "Next": "Expired" }
+      ]
+    },
+    "Approved": {
+      "Type": "Pass",
+      "Result": "approved",
+      "End": true
+    },
+    "Expired": {
+      "Type": "Fail",
+      "Error": "ApprovalTimeout",
+      "Cause": "승인 토큰이 시간 내에 반환되지 않음"
+    }
+  }
+}

@@ -17,8 +17,8 @@
 |---|---|---|---|---|
 | 01 | Producer → MSK → Lambda ESM → DDB | Lambda event source mapping | `cases/01-lambda-esm/` | ✅ 실검증(eu-central-1): 클러스터 ACTIVE + ESM Enabled |
 | 02 | Producer → MSK → EC2 consumer | kafka-python 컨슈머 | `cases/02-ec2-consumer/` | ✅ live(eu-west-1): 클러스터 ACTIVE→in-VPC EC2 에서 topic 생성+produce+consume 왕복(IAM OAUTHBEARER) |
-| 03 | IAM SASL 인증 | AWS_MSK_IAM | msk/ ✓ | ✅ Serverless=IAM 강제(9098) |
-| 04 | Serverless vs provisioned | 클러스터 타입 | 비교 | ⬜ |
+| 03 | IAM SASL 인증 | OAUTHBEARER+signer | `cases/03-iam-sasl/` | ✅ 실검증(9098) |
+| 04 | Serverless vs provisioned | 클러스터 타입 | `cases/04-serverless-vs-provisioned/` | 비교 |
 
 > **실검증 01 (2026-08-20, eu-central-1)**: MSK Serverless `lab-euc1-msk` ACTIVE
 > (ClusterType=SERVERLESS, IAM SASL 9098), Lambda ESM `topics=[lab-topic]` **State=Enabled**.
@@ -27,7 +27,7 @@
 ## 인증·연결 (실검증 함정 반영)
 
 - **★ MSK 는 VPC 에 DNS hostnames 활성 필수**(실측) — 안 켜면 create-cluster-v2 가 `BadRequestException: VPC ... doesn't have DNS hostnames enabled`. `aws ec2 modify-vpc-attribute --enable-dns-hostnames '{"Value":true}'` 선행.
-- **MSK Serverless 는 IAM SASL 강제**(포트 9098). `sasl_mechanism="AWS_MSK_IAM"`.
+- **MSK Serverless 는 IAM SASL 강제**(포트 9098).
 - **★ IAM 인증은 `aws-msk-iam-sasl-signer-python` + `OAUTHBEARER`**(실검증 정정). `sasl_mechanism="AWS_MSK_IAM"`(kafka-python-ng 2.2.3 "내장")은 **실제로 metadata 갱신 60초 타임아웃으로 실패**했다(TCP 9098 열려 있어도 SASL 핸드셰이크 안 끝남). 되는 방법: signer 토큰을 `sasl_oauth_token_provider`(`.token()`)로 `OAUTHBEARER` 에 넘긴다. produce/consume/admin 왕복 검증 완료.
 - **botocore region=None 이면 NoBrokersAvailable** — `AWS_DEFAULT_REGION` 환경변수 필수(실검증).
 - SG self-inbound 9098 필요(브로커 간 + 클라이언트).
@@ -57,7 +57,7 @@ aws dynamodb scan --region $R --table-name lab-events --select COUNT --query Cou
 
 - **MSK 생성 느림·비용 큼** — Serverless 도 시간과금. provisioned 는 ~15분+. 검증 후 즉시 삭제.
 - **IAM SASL 9098** + SG self-inbound. 평문 9092 아님(Serverless).
-- **kafka-python-ng 2.2+ 내장 AWS_MSK_IAM**, `AWS_DEFAULT_REGION` 필수(실검증 함정).
+- **IAM 인증은 signer+OAUTHBEARER**(위 참조, 내장 AWS_MSK_IAM 은 타임아웃). `AWS_DEFAULT_REGION` 필수.
 - **Lambda ESM 은 VPC 접근** — Lambda 가 MSK 브로커 서브넷에 닿아야(VPC 연결 or Serverless).
 - 토픽 사전 생성(admin.py) — ESM 이 없는 토픽 구독하면 대기.
 

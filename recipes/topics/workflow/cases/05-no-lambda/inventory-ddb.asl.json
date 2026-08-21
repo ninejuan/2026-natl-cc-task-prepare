@@ -1,0 +1,31 @@
+{
+  "Comment": "sales 입력만큼 stock 차감·balance 증가. Lambda 없이 DynamoDB SDK 직접통합. (2025 inventory 형)",
+  "StartAt": "DecrementStock",
+  "States": {
+    "DecrementStock": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "lab-sfn-inv",
+        "Key": { "name": { "S": "stock" } },
+        "UpdateExpression": "SET #v = #v - :s",
+        "ExpressionAttributeNames": { "#v": "value" },
+        "ExpressionAttributeValues": { ":s": { "N.$": "States.Format('{}', $.sales)" } }
+      },
+      "ResultPath": null,
+      "Next": "IncrementBalance"
+    },
+    "IncrementBalance": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:updateItem",
+      "Parameters": {
+        "TableName": "lab-sfn-inv",
+        "Key": { "name": { "S": "balance" } },
+        "UpdateExpression": "SET #v = #v + :s",
+        "ExpressionAttributeNames": { "#v": "value" },
+        "ExpressionAttributeValues": { ":s": { "N.$": "States.Format('{}', $.sales)" } }
+      },
+      "End": true
+    }
+  }
+}

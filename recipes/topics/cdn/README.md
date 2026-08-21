@@ -16,11 +16,11 @@
 | # | 케이스 | 엣지 기능 | 검증 |
 |---|---|---|---|
 | 01 | S3 + OAC (정적 호스팅) | 오리진 보호 | ✅ 실검증 `cases/01-s3-oac/verify.sh` |
-| 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | ✅ viewer-response 헤더 01 에 포함 실검증 |
-| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | ⚠️ association 은 실검증(배포 Deployed), 단 python3.12 함수가 edge 에서 `LambdaValidationError`(502) — **Lambda@Edge 런타임 제약**(아래 함정). Node.js 또는 지원 Python 버전 필요 |
+| 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | ✅ `cases/02-functions/` (test-function 실검증, viewer-response 헤더는 01 배포서도 확인) |
+| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | `cases/03-lambda-edge/` — association·배포 실검증, python3.12 는 502(런타임 제약) → Node.js |
 | 04 | behavior 경로 분기 | /api/* → 다른 origin | ✅ live(ordered behavior `/api/*` config 수락 + Deployed) |
 | 05 | origin failover | origin group 500/502 | ✅ live(OriginGroups FailoverCriteria 500/502 config 수락 + Deployed) |
-| 06 | signed URL/cookie | 콘텐츠 보호 | 키그룹/트러스티드시그너 설정(별도 keypair) |
+| 06 | signed URL/cookie | 콘텐츠 보호 | `cases/06-signed-url/sign.py` (키그룹+RSA 서명) |
 
 ### 01/02 실검증 결과 (ap-northeast-1 + CloudFront 글로벌, 2026-08-20)
 

@@ -1,0 +1,60 @@
+[
+  {
+    "Name": "ratelimit",
+    "Priority": 5,
+    "Action": {
+      "Block": {
+        "CustomResponse": {
+          "ResponseCode": 403,
+          "CustomResponseBodyKey": "blocked"
+        }
+      }
+    },
+    "Statement": {
+      "RateBasedStatement": {
+        "Limit": 100,
+        "EvaluationWindowSec": 60,
+        "AggregateKeyType": "IP"
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "ratelimit"
+    }
+  },
+  {
+    "Name": "ratelimit-login",
+    "Priority": 6,
+    "Action": {
+      "Block": {}
+    },
+    "Statement": {
+      "RateBasedStatement": {
+        "Limit": 50,
+        "EvaluationWindowSec": 60,
+        "AggregateKeyType": "IP",
+        "ScopeDownStatement": {
+          "ByteMatchStatement": {
+            "SearchString": "/login",
+            "FieldToMatch": {
+              "UriPath": {}
+            },
+            "TextTransformations": [
+              {
+                "Priority": 0,
+                "Type": "NONE"
+              }
+            ],
+            "PositionalConstraint": "STARTS_WITH"
+          }
+        }
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "ratelimit-login"
+    }
+  }
+]

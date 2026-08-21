@@ -1,0 +1,43 @@
+{
+  "Comment": "Distributed Map — S3 의 대량 객체/CSV 를 병렬 처리. 대규모 배치용(최대 10000 동시).",
+  "StartAt": "ProcessS3",
+  "States": {
+    "ProcessS3": {
+      "Type": "Map",
+      "ItemReader": {
+        "Resource": "arn:aws:states:::s3:listObjectsV2",
+        "Parameters": {
+          "Bucket.$": "$.bucket",
+          "Prefix.$": "$.prefix"
+        }
+      },
+      "ItemBatcher": {
+        "MaxItemsPerBatch": 100
+      },
+      "MaxConcurrency": 20,
+      "ItemProcessor": {
+        "ProcessorConfig": { "Mode": "DISTRIBUTED", "ExecutionType": "STANDARD" },
+        "StartAt": "HandleBatch",
+        "States": {
+          "HandleBatch": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke",
+            "Parameters": {
+              "FunctionName": "lab-batch-fn",
+              "Payload.$": "$"
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultWriter": {
+        "Resource": "arn:aws:states:::s3:putObject",
+        "Parameters": {
+          "Bucket.$": "$.bucket",
+          "Prefix": "results/"
+        }
+      },
+      "End": true
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "Comment": "표준 수집→처리→저장 워크플로: S3 에서 읽고(GetObject) → Lambda 처리 → DynamoDB 저장. 가이드(2025 #7 / 2026 #6) 기본형.",
+  "StartAt": "GetFromS3",
+  "States": {
+    "GetFromS3": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::aws-sdk:s3:getObject",
+      "Parameters": { "Bucket.$": "$.bucket", "Key.$": "$.key" },
+      "ResultSelector": { "raw.$": "$.Body" },
+      "ResultPath": "$.s3",
+      "Next": "Process"
+    },
+    "Process": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::lambda:invoke",
+      "Parameters": {
+        "FunctionName": "${ProcessFunctionArn}",
+        "Payload": { "raw.$": "$.s3.raw" }
+      },
+      "ResultSelector": { "item.$": "$.Payload" },
+      "ResultPath": "$.processed",
+      "Retry": [{ "ErrorEquals": ["Lambda.TooManyRequestsException", "States.TaskFailed"], "MaxAttempts": 3, "BackoffRate": 2, "IntervalSeconds": 2 }],
+      "Next": "SaveToDDB"
+    },
+    "SaveToDDB": {
+      "Type": "Task",
+      "Resource": "arn:aws:states:::dynamodb:putItem",
+      "Parameters": {
+        "TableName": "${TableName}",
+        "Item": {
+          "id": { "S.$": "$.key" },
+          "payload": { "S.$": "States.JsonToString($.processed.item)" }
+        }
+      },
+      "End": true
+    }
+  }
+}

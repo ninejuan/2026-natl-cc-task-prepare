@@ -1,0 +1,1 @@
+# SAML → IAM 2 Role (2024 원형) — admin→admin-access, dev→poweruser-access. IAM SAML provider + role×2, Keycloak 유저 Role attr=role-arn,provider-arn. 기반: ../../../cncf/keycloak/, ../../../aws/tier3/iam/policy-documents.md(SAML trust 실검증). 검증: 사용자 k8s/keycloak 패스.

@@ -1,0 +1,15 @@
+## DynamoDB GetItem 요청 매핑. querystring `item` -> Key. mysecret* 은 403.
+## 통합: type=AWS, uri=arn:aws:apigateway:{R}:dynamodb:action/GetItem
+#set($item = $input.params('item'))
+#if($item == "")
+#set($context.responseOverride.status = 400)
+{"__error__": "item required"}
+#elseif($item.startsWith("mysecret"))
+#set($context.responseOverride.status = 403)
+{}
+#else
+{
+  "TableName": "$stageVariables.tableName",
+  "Key": { "name": { "S": "$item" } }
+}
+#end

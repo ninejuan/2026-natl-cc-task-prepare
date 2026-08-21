@@ -1,0 +1,25 @@
+{
+  "_desc": "최소 Fargate 태스크. awsvpc + awslogs. EXEC_ROLE 를 실제 role ARN 으로 치환.",
+  "family": "lab-td-minimal",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": ["FARGATE"],
+  "cpu": "256",
+  "memory": "512",
+  "executionRoleArn": "EXEC_ROLE",
+  "containerDefinitions": [
+    {
+      "name": "web",
+      "image": "public.ecr.aws/nginx/nginx:latest",
+      "essential": true,
+      "portMappings": [{ "containerPort": 80, "protocol": "tcp" }],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/lab",
+          "awslogs-region": "ap-northeast-2",
+          "awslogs-stream-prefix": "web"
+        }
+      }
+    }
+  ]
+}

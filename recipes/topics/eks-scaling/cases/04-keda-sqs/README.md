@@ -1,0 +1,1 @@
+# KEDA SQS 길이 기반 scale(0→N) — ScaledObject aws-sqs-queue trigger. 큐 depth queueLength=5. IRSA/PodIdentity 로 SQS 접근. 매니페스트: ../05-keda-variants/keda-scaledobjects.yaml(SQS 블록). 기반: ../../../../cncf/keda/. 검증: 사용자 k8s 패스.

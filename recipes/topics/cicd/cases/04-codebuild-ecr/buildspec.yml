@@ -1,0 +1,11 @@
+version: 0.2
+# CodeBuild 로 로컬 Docker 없이 이미지 빌드→ECR push. NO_SOURCE + privilegedMode:true 로 실검증(v1 push SUCCEEDED).
+phases:
+  pre_build:
+    commands:
+      - aws ecr get-login-password --region $AWS_DEFAULT_REGION | docker login --username AWS --password-stdin $ECR_URI
+  build:
+    commands:
+      - printf 'FROM public.ecr.aws/docker/library/busybox:latest\nCMD ["echo","hi"]\n' > Dockerfile
+      - docker build -t $ECR_URI/app:v1 .
+      - docker push $ECR_URI/app:v1

@@ -1,0 +1,63 @@
+[
+  {
+    "Name": "ipblock",
+    "Priority": 7,
+    "Action": {
+      "Block": {}
+    },
+    "Statement": {
+      "IPSetReferenceStatement": {
+        "ARN": "arn:aws:wafv2:REGION:ACCT:regional/ipset/lab-block/ID"
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "ipblock"
+    }
+  },
+  {
+    "Name": "kr-only",
+    "Priority": 8,
+    "Action": {
+      "Block": {}
+    },
+    "Statement": {
+      "NotStatement": {
+        "Statement": {
+          "GeoMatchStatement": {
+            "CountryCodes": [
+              "KR"
+            ]
+          }
+        }
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "kr-only"
+    }
+  },
+  {
+    "Name": "geo-block",
+    "Priority": 9,
+    "Action": {
+      "Block": {}
+    },
+    "Statement": {
+      "GeoMatchStatement": {
+        "CountryCodes": [
+          "CN",
+          "RU",
+          "KP"
+        ]
+      }
+    },
+    "VisibilityConfig": {
+      "SampledRequestsEnabled": true,
+      "CloudWatchMetricsEnabled": true,
+      "MetricName": "geo-block"
+    }
+  }
+]

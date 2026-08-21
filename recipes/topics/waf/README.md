@@ -15,10 +15,10 @@
 
 | # | 케이스 | rule | 기반 |
 |---|---|---|---|
-| 01 | managed(Common/SQLi/BadInputs) | managed rule group | rule-statements 1~4 ✓ |
-| 02 | rate limit + custom 403 | RateBasedStatement + CustomResponse | rule-statements 5,6 ✓ |
-| 03 | IP set / geo 차단 | IPSet / GeoMatch | rule-statements 7~9 ✓ |
-| 04 | 헤더/AND 조합/size | ByteMatch / And / Size | rule-statements 10~12 ✓ |
+| 01 | managed(Common/SQLi/BadInputs) | managed rule group | `cases/01-managed/rules.json` ✓ |
+| 02 | rate limit + custom 403 | RateBasedStatement + CustomResponse | `cases/02-ratelimit/rules.json` ✓ |
+| 03 | IP set / geo 차단 | IPSet / GeoMatch | `cases/03-ipset-geo/rules.json` ✓ |
+| 04 | 헤더/AND 조합/size | ByteMatch / And / Size | `cases/04-header-and-size/rules.json` ✓ (ByteMatch SearchString CLI 는 base64) |
 | 05 | WAF 로깅 | put-logging-configuration | `cases/05-logging/` ✅ live (12 rule ACL + CW 로그그룹 연결 실측) |
 | 06 | Bot Control | AWSManagedRulesBotControlRuleSet | ✅ live(create-web-acl 수락) |
 

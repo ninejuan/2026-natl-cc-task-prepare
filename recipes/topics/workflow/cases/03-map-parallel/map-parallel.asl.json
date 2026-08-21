@@ -1,0 +1,49 @@
+{
+  "Comment": "인라인 Map(배열 각 항목 처리) + Parallel(동시 분기). items 배열을 받아 각각 DynamoDB 저장.",
+  "StartAt": "ProcessItems",
+  "States": {
+    "ProcessItems": {
+      "Type": "Map",
+      "ItemsPath": "$.items",
+      "MaxConcurrency": 5,
+      "ItemProcessor": {
+        "ProcessorConfig": { "Mode": "INLINE" },
+        "StartAt": "SaveItem",
+        "States": {
+          "SaveItem": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::dynamodb:putItem",
+            "Parameters": {
+              "TableName": "lab-sfn-inv",
+              "Item": {
+                "name": { "S.$": "States.Format('item-{}', $.sku)" },
+                "value": { "N.$": "States.Format('{}', $.qty)" }
+              }
+            },
+            "End": true
+          }
+        }
+      },
+      "ResultPath": "$.saved",
+      "Next": "FanOut"
+    },
+    "FanOut": {
+      "Type": "Parallel",
+      "Branches": [
+        {
+          "StartAt": "BranchA",
+          "States": {
+            "BranchA": { "Type": "Pass", "Result": "audit-logged", "End": true }
+          }
+        },
+        {
+          "StartAt": "BranchB",
+          "States": {
+            "BranchB": { "Type": "Pass", "Result": "metrics-emitted", "End": true }
+          }
+        }
+      ],
+      "End": true
+    }
+  }
+}

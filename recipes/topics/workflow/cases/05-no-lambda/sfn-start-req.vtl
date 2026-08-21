@@ -1,0 +1,7 @@
+## Step Functions StartExecution 직접통합. POST body 를 그대로 state machine 입력으로.
+## 통합: type=AWS, uri=arn:aws:apigateway:{R}:states:action/StartExecution, POST
+## input 은 문자열이어야 하므로 body 를 JSON 문자열로 escape 한다.
+{
+  "stateMachineArn": "$stageVariables.stateMachineArn",
+  "input": "$util.escapeJavaScript($input.json('$'))"
+}

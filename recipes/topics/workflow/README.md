@@ -17,12 +17,12 @@
 
 | # | 케이스 | 구조 | 검증 |
 |---|---|---|---|
-| 01 | S3→Lambda→DDB (표준 워크플로) | SFN + Lambda task | sfn ✓ |
-| 02 | Choice/Retry/Catch | 에러 처리·분기 | `choice-retry-catch.asl.json` ✓ |
-| 03 | Map / Parallel / DistributedMap | 대량 병렬 | `map-parallel`·`distributed-map-s3` ✓ |
-| 04 | Callback(task token) | 외부 대기 | `callback-task-token.asl.json` ✓ |
-| 05 | **No-Lambda(SDK 직접통합)** | SFN→DDB SDK, APIGW→SFN VTL | `inventory-ddb.asl.json` + vtl ✓ |
-| 06 | Express vs Standard | 고빈도 단기 vs 장기 | 비교 |
+| 01 | S3→Lambda→DDB (표준 워크플로) | SFN + Lambda task | ✅ live `cases/01-s3-lambda-ddb/` (실행 SUCCEEDED, DDB 저장 확인) |
+| 02 | Choice/Retry/Catch | 에러 처리·분기 | `cases/02-choice-retry/` ✓ |
+| 03 | Map / Parallel / DistributedMap | 대량 병렬 | `cases/03-map-parallel/` ✓ |
+| 04 | Callback(task token) | 외부 대기 | `cases/04-callback/` ✓ |
+| 05 | **No-Lambda(SDK 직접통합)** | SFN→DDB SDK, APIGW→SFN VTL | ✅ live `cases/05-no-lambda/` (lambda=[]) |
+| 06 | Express vs Standard | 고빈도 단기 vs 장기 | `cases/06-express-standard/` |
 
 ## ★ No-Lambda 변형 (2025 추가과제 핵심)
 

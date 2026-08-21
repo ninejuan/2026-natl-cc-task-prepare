@@ -1,0 +1,1 @@
+# Karpenter 노드 오토스케일 — pending pod → 노드 프로비저닝(~1분). NodePool+EC2NodeClass(서브넷/SG discovery 태그)+IRSA. 매니페스트: ../../../../k8s/scaling/karpenter-nodepool.yaml, karpenter-ec2nodeclass.yaml. 노드 라벨로 kubectl get nodes -l 채점. 검증: 사용자 k8s 패스.
