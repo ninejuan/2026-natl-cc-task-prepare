@@ -69,6 +69,52 @@ bin/mark-self.sh --foul     # 금지 조항 위반 여부만 검사
 - [ ] `bin/mark-self.sh --foul` 통과
 - [ ] 제출 양식에 적을 값(엔드포인트 URL, Keycloak 주소 등)을 적어뒀는가
 
+## ★ 조용히 점수를 깎는 함정 (전부 실계정에서 당해본 것)
+
+에러가 안 나거나, 엉뚱한 에러가 나서 원인을 못 찾는 것들만 모았다. 막히면 여기부터 본다.
+
+**배포했는데 채점이 옛날 걸 본다**
+- **CloudFront**: 오리진만 바꾸고 `create-invalidation` 안 하면 캐시가 계속 옛 내용을 준다(실측: 무효화 전 v1 / 후 v2).
+- **ECS**: `update-service --force-new-deployment` 는 **같은 taskdef 로 재시작**일 뿐이다. 새 이미지를 배포하려면
+  `describe-task-definition` → image 교체 → `register-task-definition` → `update-service --task-definition FAMILY:REV`.
+
+**설정했는데 "설정 안 된 것처럼" 보인다 (조회 API 를 잘못 고른 것)**
+- `aws dynamodb describe-table --query 'GlobalSecondaryIndexes[]'` → 조용히 `null`. **`Table.` 접두사** 필요.
+- Lambda 예약 동시성은 `get-function-configuration` 에 **안 나온다**. `get-function-concurrency` 를 써라.
+- DDB `put-resource-policy` 직후 `get-resource-policy` 는 `PolicyNotFound` (최종적 일관성) → 재시도.
+- EventBridge 아카이브는 이벤트 반영이 **~90초 늦다**. 바로 replay 하면 `COMPLETED` 인데 아무것도 안 나온다.
+
+**CLI 문법 함정 (에러 메시지가 원인을 안 알려준다)**
+- **zsh 에서 `"$ACCT:role/..."` 는 ARN 이 깨진다**(`:r` modifier). `${ACCT}` 중괄호 필수.
+  증상: `MalformedPolicyDocument: The policy failed legacy parsing`.
+- `sqs set-queue-attributes --attributes Policy={json}` / `send-message-batch --entries Id=..,MessageBody={json}`
+  → shorthand 는 JSON 을 못 받는다. **`file://`** 로.
+- `configservice put-configuration-recorder` shorthand 는 bool 을 문자열로 보낸다 → **JSON 파일 필수**.
+- 카드의 `_comment`/`_usage` 키가 든 JSON 을 `file://` 로 바로 넣으면 `Unknown parameter`. **jq 로 `_` 키 제거** 후 사용.
+- `aws deploy get-deployment --query '[status,deploymentOverview]' --output text` → `'str' object has no attribute 'items'`.
+
+**인증/네트워크가 조용히 막힌다**
+- **GHA OIDC**: 토큰의 `sub` 가 `repo:OWNER@<id>/REPO@<id>:ref:...` 형태(불변 ID 포함)라
+  문서 예제의 `StringEquals "repo:OWNER/REPO:ref:..."` 는 **절대 안 맞는다**. `StringLike "repo:OWNER*/REPO*:..."` 로.
+  증상은 2분 재시도 후 `Not authorized to perform sts:AssumeRoleWithWebIdentity` 한 줄뿐.
+- **Client VPN**: 서버 인증서 CN 이 FQDN 이 아니면 endpoint 생성부터 거부(ACM DomainName=null).
+  `.ovpn` 에 `dhcp-option DNS` 는 **없다**(연결 시 서버가 push) — 파일만 보고 오해하지 말 것.
+- **IAM Identity Center** 는 org 멤버 계정에서 **생성 불가**(인스턴스 quota) + 조직 인스턴스 접근 거부.
+  → Keycloak 연동은 **IAM SAML 페더레이션**으로. SAML 은 IdP 접근성을 검사 안 해서 **사설 Keycloak 도 된다**
+  (OIDC 는 issuer 를 실제로 조회해서 사설이면 실패).
+- **Amazon MQ**: RabbitMQ 는 `mq.t3.micro` **미지원**(최소 `mq.m7g.medium`). ActiveMQ 는 퍼블릭이어도
+  **VPC 보안그룹을 타므로** 61617/5671/61614/8883/8162 를 열어야 붙는다(RabbitMQ 는 SG 안 탄다).
+- **Lambda@Edge**: `X-Edge-*` 접두사 헤더 추가 금지, 응답 객체를 **새로 만들지 말고** 받은 `response` 를 수정,
+  **환경변수 사용 불가**, OAC 오리진엔 `AllViewerExceptHostHeader` 오리진요청정책(‘AllViewer’ 는 Host 전달로 S3 403).
+- **Managed Flink Studio**: CLI/TF 로 만들면 커넥터가 `datagen/filesystem/blackhole/print` 4개뿐이다.
+  Kinesis/Kafka 소스는 `update-application` 으로 Maven 아티팩트를 넣어야 한다(앱 정지 상태에서만).
+
+**시간이 오래 걸려서 채점 전에 못 끝내는 것**
+- OpenSearch 도메인 생성 **~50분**, MSK provisioned **~60분**(serverless ~10분), MQ 브로커 ~20분,
+  Client VPN association 수 분, CloudFront 배포/삭제 각 수 분.
+  → 이런 건 **먼저 만들어 놓고** 나머지를 한다.
+- Config rule 은 리소스 discovery 에 수 분 걸린다. **3분 안에 탐지·조치를 보여야 하면 EventBridge→Lambda** 경로.
+
 ## 참고
 
 - 채점 방식 상세: `_analysis/MARK-PATTERNS.md`
