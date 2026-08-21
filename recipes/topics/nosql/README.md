@@ -15,7 +15,7 @@
 
 | # | 케이스 | 서비스 | 검증 |
 |---|---|---|---|
-| 01 | DynamoDB GSI/LSI/Stream/TTL | DDB | `cases/01-ddb-core/` (partiql 15종 실검증) |
+| 01 | DynamoDB GSI/LSI/Stream/TTL | DDB | `cases/01-ddb-core/` ✅ live(LSI/GSI 쿼리 + Stream INSERT 레코드 + TTL/PITR ENABLED + GSI 사후추가, partiql 15종) |
 | 02 | DAX (마이크로초 캐시) | DDB + DAX | `cases/02-dax/` live ✓ (dax.t3.small available+엔드포인트) |
 | 03 | Global Table (멀티리전 복제) | DDB | `cases/03-global-table/` live ✓ (euw1↔euc1 put/get 왕복) |
 | 04 | DocumentDB (MongoDB 호환) | DocumentDB | `cases/04-documentdb/` live ✓ (docdb 5.0 available+엔드포인트) |
@@ -45,7 +45,8 @@ aws docdb describe-db-clusters --region $R --query 'DBClusters[?DBClusterIdentif
 
 ## 함정
 
-- **LSI 는 테이블 생성 시에만**, GSI 는 나중에 추가 가능.
+- **LSI 는 테이블 생성 시에만**(`update-table` 에 옵션 자체가 없다), GSI 는 나중에 추가 가능 — 단 **backfill 중엔 `delete-table` 이 `ResourceInUseException`**(실측).
+- **`describe-table --query` 는 `Table.` 접두사 필수** — 빼면 에러 없이 `null` 이 나와 "설정 누락"으로 오진한다(실측).
 - **DAX 는 VPC 클러스터 + 시간과금** — 마이크로초 캐시 필요할 때만. 서브넷그룹+SG 필요.
 - **Global Table 은 스트림 필수**(NEW_AND_OLD_IMAGES) + 각 리전 동일 테이블명.
   - 생성 직후 `update-table --replica-updates` 는 대상 리전에 대해 일시적 `UnrecognizedClientException`(security token invalid) 를 던진다 → **재시도**로 해결(setup.sh 에 재시도 루프). (live 검증)
