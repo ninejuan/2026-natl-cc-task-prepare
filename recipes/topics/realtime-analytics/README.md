@@ -21,9 +21,9 @@
 | # | 케이스 | SQL 패턴 | 검증 |
 |---|---|---|---|
 | 01 | Kinesis 소스 + 텀블링 윈도우 | TUMBLE 집계 | ✅ **live**(Studio 노트북에서 Kinesis 레코드 조회 성공. ★커넥터 JAR 추가 필수 — 아래) |
-| 02 | MSK 소스 | Kafka connector | 커넥터 아티팩트는 `flink-connector-kafka:1.15.4`(실측 수락). MSK 실연결은 01 과 동일 절차 |
+| 02 | MSK 소스 | Kafka connector | ⚠️ **커넥터·옵션까지 live**(`Table has been created` + SELECT 가 `No resolvable bootstrap urls` = 팩토리 통과). 실 MSK 왕복은 미실시 |
 | 03 | TopN + 스트림 조인 | ROW_NUMBER OVER | ✅ live(윈도우+TopN 실행 결과 확인 — `cases/05-window-variants/`) |
-| 04 | 이상 탐지 → S3 sink | 임계 필터 + S3 | `notebook-anomaly-s3sink.sql` |
+| 04 | 이상 탐지 → S3 sink | 임계 필터 + S3 | ✅ **live**(임계 필터 실행 결과 확인 + S3 싱크). ★parquet 포맷 없음/LAG 미지원/GROUP BY 함정 규명 |
 | 05 | 세션/슬라이딩 윈도우 | SESSION/HOP | ✅ **live**(TUMBLE/HOP/CUMULATE/TopN/SESSION 전부 실행→결과) `cases/05-window-variants/` |
 
 ## ★★ 커넥터 JAR 이 없으면 Kinesis/Kafka 소스가 통째로 안 된다 (실측)
@@ -71,7 +71,7 @@ Python 앱(EC2, ALB 뒤) ──로그──> Kinesis Data Stream ──> Managed
 # Studio 앱 상태 (RUNNING 이어야 SQL 실행 가능)
 aws kinesisanalyticsv2 describe-application --region $R --application-name lab-flink \
   --query 'ApplicationDetail.ApplicationStatus' --output text  # RUNNING
-# ★ Zeppelin SQL 실행 자체는 브라우저(노트북) — CLI 자동화 불가. Studio RUNNING + 노트북 결과가 채점.
+# 채점은 Studio RUNNING + 노트북 결과. (준비/검증은 위의 Zeppelin REST 로 CLI 자동화 가능 — 실측)
 # 소스 스트림에 데이터 유입 확인
 aws kinesis describe-stream-summary --region $R --stream-name lab-stream --query 'StreamDescriptionSummary.OpenShardCount' --output text
 ```
@@ -85,6 +85,10 @@ aws kinesis describe-stream-summary --region $R --stream-name lab-stream --query
 - **윈도우 TVF 인자는 테이블 이름만** — `TABLE (SELECT … FROM (VALUES …))` 같은 인라인 서브쿼리는 ParseException(실측).
 - **무한 스트림 SELECT 는 문단이 안 끝난다** — 결과 스냅샷은 문단 **취소** 후에 남는다(`status=ABORT` + 결과 보존, 실측).
 - **워터마크 필수** — 이벤트 시간 윈도우는 `WATERMARK FOR ts AS ts - INTERVAL '5' SECOND`.
+- **★ `format='parquet'` 도 클래스패스에 없다**(실측) — `Could not find any format factory for identifier 'parquet'`. `json`/`csv` 는 내장. parquet 이 필요하면 `flink-sql-parquet` JAR 추가.
+- **★ 파일시스템(S3) 싱크는 append-only 만 받는다** — 윈도우 집계를 `GROUP BY window_end, …` 처럼 쓰면 일반 GroupAggregate 가 되어 `doesn't support consuming update changes` 로 거부된다(실측). **`GROUP BY window_start, window_end, …`** 로 윈도우 집계를 유지할 것.
+- **★ Flink 1.15 에서 `LAG`/`LEAD` OVER 는 못 쓴다** — `ORDER BY window_start` 는 `OVER windows' ordering … must be defined on a time attribute`, `window_time` 으로 바꾸면 `NullPointerException`(실측). 직전 창 비교는 **윈도우 집계 뷰의 self-join**(`p.window_start = c.window_start - INTERVAL '1' MINUTE`)으로.
+- 파일은 **체크포인트마다 커밋**된다 — 인터랙티브 노트북은 `SET 'execution.checkpointing.interval' = '10s'` 를 먼저.
 - Kinesis/MSK 소스 커넥터 속성(스트림명·리전·시작위치) 정확히.
 
 ## context7 참고
