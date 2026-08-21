@@ -221,3 +221,56 @@ tier3 lab 전량 정리.
 - `apigateway/vtl/sns-publish-req`, `validate-transform-req` (문법만, 실 API 미검증)
 - `managed-flink` SQL 노트북 (Zeppelin UI 기반 — CLI 자동화 불가. Studio RUNNING 은 확인, SQL 실행은 브라우저 필요)
 - k8s/cncf 매니페스트 (오프라인 문법만)
+
+---
+
+# 2026-08-21 추가 라이브 검증 (계정 전환 후 이어서)
+
+이 세션에서 **파일만/문서형이던 케이스를 실계정으로 밀어붙인** 결과. 전부 생성→검증→삭제 완료, 계정 잔재 0
+(예외: Lambda@Edge 복제본 회수 대기 중인 `lab-edge-resize2/3` + `lab-edge-role` — 과금 없음, 수 시간 뒤 삭제 가능).
+
+| 케이스 | 리전 | 결과 | 무엇을 실제로 확인했나 |
+|---|---|---|---|
+| **ecs-logging 03** FireLens→OpenSearch | ap-northeast-2 | ✅ live | OpenSearch 도메인 실생성 → Fargate(app+fluent-bit) → `ecs-logs` 인덱스 **33건**, 문서에 `ecs_cluster`/`ecs_task_arn`/`ecs_task_definition` 부착 |
+| **message-queue 03** 부분배치 실패 | eu-west-1 | ✅ live | 3건 중 1건만 실패 → DLQ 에 `{"id":"fail-me"}` **1건만**, 성공 2건 **재처리 0회**(로그 카운트) |
+| **workflow 06** Express vs Standard | us-west-2 | ✅ live | 동일 ASL 두 타입 실행. Express `list-executions` = **`StateMachineTypeNotSupported`**, 이력은 CW Logs 에만 |
+| **client-vpn 04** split-tunnel+DNS | ap-southeast-1 | ✅ live | endpoint `available`, `SplitTunnel=true`, `DnsServers=[10.40.0.2]`, PHZ `db.day2.local`→**10.40.1.99** 해석. `.ovpn` 에 DNS 없음(서버 push) |
+| **client-vpn 03** SAML federated | ap-southeast-1 | ✅ live | IAM SAML provider + `federated-authentication` endpoint + **`SelfServicePortalUrl` 자동 생성** + 그룹 인가 `GroupId=developers, AccessAll=False` |
+| **cdn 03** Lambda@Edge 이미지 리사이징 | us-east-1 + CF | ✅ **live E2E** | Node20+sharp. `?w=100`→**100×75 PNG**, `?w=64`→**64×48 PNG**, S3 직접접근 403 |
+| **nosql 01** DDB 코어 | ap-northeast-1 | ✅ live | LSI 정렬 쿼리 / GSI ACTIVE 쿼리 / Stream `INSERT` 레코드(NEW_AND_OLD_IMAGES) / TTL·PITR ENABLED / GSI 사후추가 |
+| **msk 04** Serverless vs Provisioned | us-east-1 | ✅ live 비교 | 두 타입 동시 생성. `ClusterType` 구분, serverless 는 ZK·브로커 필드 없음 + `list-nodes` 거부, provisioned 는 `b-1/b-2:9098`+ZK 2181 |
+| **realtime-analytics 01/03/05** Flink SQL | eu-west-2 | ✅ live | Studio 노트북에서 **TUMBLE/HOP/CUMULATE/윈도우TopN/SESSION 전부 실행→결과**, Kinesis 소스 SELECT + 1분창 집계까지 |
+
+## 이 세션에서 새로 뚫은 함정 (전부 실측)
+
+**Lambda@Edge 502 3종** — 셋 다 겪고 해결했다.
+1. `X-Edge-*` 접두사 헤더 추가 → `The function tried to add a blacklisted header.`
+2. 응답 객체를 **새로 만들어 반환** → `The function tried to add, delete, or change a read-only header.`
+   → 받은 `response` 를 **수정**해서 반환할 것(`content-length` 는 delete).
+3. OAC 오리진 + `AllViewer` 오리진요청정책 → **S3 403**(Host 헤더 전달로 SigV4 깨짐)
+   → `AllViewerExceptHostHeader`(b689b0a8-53d0-40ab-baf2-68738e2966ac).
+   추가로 Lambda@Edge 는 **환경변수 불가**(버킷/리전을 `request.origin.s3.domainName` 에서 파싱), 함수 삭제는 복제본 회수까지 수 시간.
+
+**Managed Flink Studio** — 문서 정정 2건.
+- ❗ **CLI/TF 로 만든 Studio 앱엔 커넥터가 `blackhole/datagen/filesystem/print` 뿐이다.**
+  `'connector'='kinesis'` 테이블은 DDL 은 통과하고 **SELECT 에서** `Could not find any factory for identifier 'kinesis'` 로 죽는다.
+  → `update-application` 의 `CustomArtifactsConfigurationUpdate` 로 Maven 아티팩트 추가(앱이 **READY** 일 때만).
+  Kafka 는 **`flink-connector-kafka`** — `flink-sql-connector-kafka:1.15.4` 는 `unsupported Maven References` 로 거부.
+- ❗ **Zeppelin 은 CLI 로 구동 가능하다**(기존 "브라우저 전용" 서술이 틀렸다).
+  presigned URL 을 한 번 치면 나오는 `VerifiedAuthToken` 쿠키로 `/zeppelin/api/...` REST 를 그대로 쓴다.
+  GET 은 쿠키 없이도 되지만 **POST 는 403**. 실행은 `POST /api/notebook/run/{note}/{para}`, 취소는 `DELETE /api/notebook/job/{note}/{para}`.
+- `CREATE TABLE` 은 **Glue 카탈로그에 영구 저장** — 앱 재시작해도 남아 재실행 시 `already exists`.
+- **윈도우 TVF 인자는 테이블 이름만** — `TABLE (SELECT … FROM (VALUES …))` 인라인 서브쿼리는 ParseException.
+- 무한 스트림 문단은 **취소해야** 결과 스냅샷이 남는다(`status=ABORT` + 결과 보존).
+
+**그 외**
+- OpenSearch 도메인 생성 **실측 ~50분**(t3.small.search 1노드). `Processing=True` 동안 `Endpoint`=`None`.
+- OpenSearch 출력에 `Type` 옵션 금지(2.x 는 매핑 타입 없음), `Suppress_Type_Name: On` 만. 조회는 SigV4 서명 필요.
+- **taskdef JSON 을 셸 heredoc 으로 조립 금지** — 앱 command 의 `$i`/`$((i+1))` 가 셸에 치환돼 JSON 이 깨진다.
+- `sqs send-message-batch --entries Id=..,MessageBody={..}` **shorthand 는 JSON body 파싱 실패** → `file://`.
+- SQS 큐는 **삭제 후 60초** 재사용 불가(`QueueDeletedRecently`).
+- Step Functions **Express 로깅 role 에 `logs:CreateLogDelivery` 등 8종** 필요, 로그그룹 ARN 끝에 `:*`.
+- `describe-table --query` 에 **`Table.` 접두사** 빠지면 에러 없이 `null`(설정 누락으로 오진).
+- DDB **GSI backfill 중 `delete-table` 거부**(`ResourceInUseException`).
+- Client VPN `.ovpn` 에 **`dhcp-option DNS` 없음**(연결 시 서버 push). 대신 `verify-x509-name <서버CN>` 이 있어 **CN=FQDN** 이 필수인 이유가 드러난다.
+- MSK **provisioned 생성 실측 ~60분**(t3.small×2), serverless ~10분.
