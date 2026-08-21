@@ -33,7 +33,7 @@ aws ecr put-lifecycle-policy --region $R --repository-name lab-ecr --lifecycle-p
 ```
 미태그 1일 후 삭제, 최근 10개만 유지. `tagPrefixList` 로 특정 태그군 대상 가능.
 
-## 케이스 C — 이미지 빌드·푸시
+## 케이스 C — 이미지 빌드·푸시 [검증됨: topics/cicd — GHA/CodeBuild 로 push]
 
 ```bash
 aws ecr get-login-password --region $R | docker login --username AWS --password-stdin $ACCT.dkr.ecr.$R.amazonaws.com
@@ -43,7 +43,7 @@ docker push $ACCT.dkr.ecr.$R.amazonaws.com/lab-ecr:v1.0.0
 ```
 > ⚠️ **CloudShell 은 홈 1GB** 라 큰 이미지 빌드가 실패. 지급 PC(Docker Desktop) 또는 CodeBuild(`../tier3/code-series/`)로. 현장은 지급 PC 에서 빌드.
 
-## 케이스 D — 스캔 결과 / pull-through cache
+## 케이스 D — 스캔 결과 / pull-through cache [검증됨: pull-through 룰→docker pull 로 repo 자동생성+캐시]
 
 ```bash
 # 스캔 결과 (채점: 취약점 0 확인)

@@ -88,7 +88,7 @@ aws dynamodb query --region $R --table-name lab-ddb \
   --expression-attribute-values '{":p":{"S":"acct#1"},":a":{"N":"0"}}'
 ```
 
-## 케이스 E — PITR 복원 / Streams / DAX / Global Table
+## 케이스 E — PITR 복원 / Streams / DAX / Global Table [검증됨: topics/nosql 01·02·03 — Stream 레코드/DAX/Global Table 왕복, PITR ENABLED]
 
 ```bash
 # PITR 복원 (새 테이블로. 원본 유지)
@@ -108,7 +108,7 @@ aws dynamodb update-table --region $R --table-name lab-ddb \
   --replica-updates '[{"Create":{"RegionName":"us-west-2"}}]'
 ```
 
-## 케이스 F — resource policy (리소스 기반 접근제어)
+## 케이스 F — resource policy (리소스 기반 접근제어) [검증됨: put-resource-policy RevisionId]
 
 ```bash
 aws dynamodb put-resource-policy --region $R \

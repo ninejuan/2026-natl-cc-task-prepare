@@ -33,7 +33,7 @@ aws apigateway put-integration ... --request-templates file:///tmp/req.json
 
 ---
 
-## ★ 케이스 A — AWS Service 직접통합 (Lambda 없이 DynamoDB)
+## ★ 케이스 A — AWS Service 직접통합 (Lambda 없이 DynamoDB) [검증됨: topics/workflow 05 — lambda=[] 로 SFN·DDB 직접통합]
 
 **2025 inventory 과제가 이거였다.** "별도 컴퓨팅 서비스 사용 불가, integration type AWS Service Proxy" → API Gateway 가 DynamoDB 를 직접 호출. 아래는 실제로 `1000`/`100` raw 출력 + `mysecret*`→403 까지 검증된 전체 흐름.
 
@@ -153,7 +153,7 @@ SNS 는 form-urlencoded 를 받으므로 `vtl/sns-publish-req.vtl` 이 `Action=P
 
 ---
 
-## 케이스 B — Lambda proxy 통합
+## 케이스 B — Lambda proxy 통합 [검증됨: topics/rest-api 01 — POST→GET 왕복]
 
 가장 흔한 기본형. Lambda 가 `{statusCode,headers,body}` 를 반환.
 
@@ -168,7 +168,7 @@ aws lambda add-permission --region $R --function-name lab-fn \
 ```
 `AWS_PROXY` 는 매핑 템플릿이 없다 — 요청 전체가 Lambda 로 간다. **add-permission 을 빠뜨리면 502**. `source-arn` 의 `*/*/*` = stage/method/path.
 
-## 케이스 C — HTTP API (v2, 더 저렴·빠름)
+## 케이스 C — HTTP API (v2, 더 저렴·빠름) [검증됨: topics/rest-api 02 — base64 body 함정 포함]
 
 ```bash
 APIID=$(aws apigatewayv2 create-api --region $R --name lab-http --protocol-type HTTP \

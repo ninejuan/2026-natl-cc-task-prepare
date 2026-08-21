@@ -38,7 +38,7 @@ aws iam put-role-policy --role-name lab-lambda-role --policy-name app --policy-d
 
 ---
 
-## 케이스 A — zip 배포 (기본)
+## 케이스 A — zip 배포 (기본) [검증됨: create→invoke 200]
 
 가장 흔한 형태. 핸들러는 `파일명.함수명`.
 
@@ -68,7 +68,7 @@ aws lambda wait function-updated-v2 --region "$R" --function-name lab-fn
 ```
 설정 갱신(env/timeout/memory)은 `update-function-configuration`. **code 와 configuration 은 별도 명령**이고, 연속 호출 시 앞 작업이 끝나야(`wait function-updated-v2`) 다음이 된다 — 안 그러면 `ResourceConflictException`.
 
-## 케이스 B — 직접 호출 (채점이 하는 방식)
+## 케이스 B — 직접 호출 (채점이 하는 방식) [검증됨]
 
 ```bash
 aws lambda invoke --region "$R" --function-name lab-fn \
@@ -78,7 +78,7 @@ cat out.json    # {"statusCode":200,...}
 ```
 `--cli-binary-format raw-in-base64-out` 없으면 payload 를 base64 로 오해한다. CLI v2 필수 플래그.
 
-## 케이스 C — Function URL (⚠️ SCP 주의)
+## 케이스 C — Function URL (⚠️ SCP 주의) [검증됨: 발급 OK, org SCP 로 403]
 
 ```bash
 URL=$(aws lambda create-function-url-config --region "$R" --function-name lab-fn \
@@ -93,7 +93,7 @@ curl -s "${URL}?hello=world"
 >
 > `auth-type AWS_IAM` 은 SigV4 서명 요청만 받는다 — 브라우저/curl 로 바로 안 열린다.
 
-## 케이스 D — ALB target
+## 케이스 D — ALB target [검증됨: topics/rest-api 03 — ALB→Lambda 왕복]
 
 CloudFront → ALB → Lambda 경로(1과제 흔함). ALB 가 Lambda 를 직접 타깃으로.
 
@@ -110,7 +110,7 @@ aws elbv2 register-targets --region "$R" --target-group-arn "$TG" \
 ```
 ALB 리스너 규칙에서 이 TG 로 라우팅. Lambda 는 ALB 이벤트 형식(`{"httpMethod","path","queryStringParameters",...}`)을 받고 `{"statusCode","headers","body","isBase64Encoded"}` 를 반환해야 한다. API Gateway proxy 형식과 미묘하게 다르다.
 
-## 케이스 E — ESM (SQS/DDB Stream/MSK 소비)
+## 케이스 E — ESM (SQS/DDB Stream/MSK 소비) [검증됨: SQS ESM + ReportBatchItemFailures 실측]
 
 ```bash
 QURL=$(aws sqs create-queue --region "$R" --queue-name lab-esm-q --query QueueUrl --output text)
@@ -134,7 +134,7 @@ aws lambda create-event-source-mapping --region "$R" --function-name lab-fn \
 - **필터**: `--filter-criteria '{"Filters":[{"Pattern":"{\"body\":{\"type\":[\"order\"]}}"}]}'` — 특정 메시지만 트리거.
 - DDB Stream 은 `--starting-position LATEST` 필요. MSK 는 `--topics`.
 
-## 케이스 F — layer / VPC / 동시성
+## 케이스 F — layer / VPC / 동시성 [검증됨: layer 코드 실행 + VPC 부착 + 예약/프로비저닝 동시성]
 
 ```bash
 # layer (공통 의존성)

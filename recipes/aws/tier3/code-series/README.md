@@ -54,7 +54,7 @@ aws ecr describe-images --region $R --repository-name lab-cb-app --query 'imageD
 > ★ **privilegedMode:true** 없으면 `docker build` 가 "Cannot connect to Docker daemon" 로 실패. 이미지 빌드 프로젝트의 필수 플래그.
 > ★ **role 에 S3 소스 읽기 권한** 필요 — 없으면 DOWNLOAD_SOURCE 단계 403(실검증 중 실제로 밟음).
 
-## 케이스 B — CodePipeline (source→build→deploy)
+## 케이스 B — CodePipeline (source→build→deploy) [검증됨: topics/cicd 01b — 3스테이지 전부 Succeeded, ECS :1→:2]
 
 ```bash
 # 3단계: CodeConnections(GitHub) → CodeBuild → ECS/CodeDeploy

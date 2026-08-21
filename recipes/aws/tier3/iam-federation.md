@@ -45,7 +45,7 @@ aws sts assume-role --role-arn "$RARN" --role-session-name audit --query x 2>&1 
 - **최소권한 = Resource 를 특정 ARN 으로**, `*` 금지. `mark-self.sh --foul` 이 `Action:"*"` 검사.
 - 세션 시간: `--max-session-duration 3600`.
 
-## ★ 케이스 B — SAML (Keycloak → AWS 콘솔)
+## ★ 케이스 B — SAML (Keycloak → AWS 콘솔) [검증됨: SAML provider + role×2 + SAML:aud trust]
 
 Keycloak 상세는 `../../../cncf/keycloak/`(realm import + setup-aws-saml.sh 로 검증됨). AWS 쪽만:
 
@@ -67,7 +67,7 @@ aws iam attach-role-policy --role-name admin-access --policy-arn arn:aws:iam::aw
 ```
 Keycloak 유저 attribute `Role` = `<role-arn>,<saml-provider-arn>`. 로그인 → SAML assertion → Role 선택 → 콘솔.
 
-## ★ 케이스 C — IAM Identity Center (IdC) + 외부 IdP
+## ★ 케이스 C — IAM Identity Center (IdC) + 외부 IdP [⛔ 실측: org 멤버 계정은 인스턴스 생성 불가 + 조직 인스턴스 접근 거부]
 
 "IdC + Keycloak 연동으로 특정 permission set 으로 로그인" 요구. **IdC 는 조직/계정 레벨 활성화**(콘솔에서 enable)라 CLI 로만은 제한적.
 
@@ -96,7 +96,7 @@ aws sso-admin create-account-assignment --instance-arn <idc> \
 
 과제가 "특정 IAM Role 로 로그인" 단일 계정이면 **B(SAML)가 간단**. "IdC 로" 를 명시하면 C.
 
-## 케이스 D — OIDC (IRSA / GitHub Actions)
+## 케이스 D — OIDC (IRSA / GitHub Actions) [검증됨: 실제 GHA 에서 assume 성공 — sub 불변ID 함정 주의]
 
 ```bash
 # EKS IRSA: ../../../k8s/identity/ (OIDC provider + sub 조건 trust)

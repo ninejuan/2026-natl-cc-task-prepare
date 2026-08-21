@@ -44,7 +44,7 @@ dig +short @$NS q1.lab.internal A     # 54.0.0.10
 
 > ⚠️ **함정 뒤집기**: 과제가 "Private Hosted Zone 생성 시 감점" 이라고 하면 위 방법이 **금지**다. 그땐 **IP 기반 라우팅(CIDR)** 또는 Resolver 규칙으로 풀어야 한다. 과제 문구를 정확히 읽어라 — 2024 는 PHZ 로 푸는 문제와 PHZ 금지 문제가 **둘 다** 나왔다. PHZ 금지면 아래 케이스 F.
 
-## 케이스 B — NS 하위 위임
+## 케이스 B — NS 하위 위임 [검증됨: 부모 존 dig 에 자식 NS referral, 자식 NS 직접조회 성공]
 
 상위 도메인에서 하위를 다른 zone 으로 위임. "NS 레코드를 등록" 형.
 
@@ -103,7 +103,7 @@ HC=$(aws route53 create-health-check --caller-reference "hc-$(date +%s)" \
 
 **geolocation 은 `*`(default) 가 없으면** 매칭 안 되는 위치에 응답이 없다 — 반드시 default.
 
-## 케이스 D — alias (AWS 리소스로)
+## 케이스 D — alias (AWS 리소스로) [검증됨: TF apply→dig]
 
 ```bash
 # ALB/CloudFront/S3 로. TTL 없고 HostedZoneId 필요.
@@ -113,7 +113,7 @@ aws route53 change-resource-record-sets --hosted-zone-id $PUB --change-batch '{
 ```
 CloudFront alias 의 HostedZoneId 는 항상 `Z2FDTNDATAQYW2`(고정).
 
-## 케이스 E — Resolver (하이브리드 DNS)
+## 케이스 E — Resolver (하이브리드 DNS) [검증됨: inbound/outbound OPERATIONAL + FORWARD 룰 VPC 연결 COMPLETE]
 
 ```bash
 # inbound endpoint: 온프렘 → VPC DNS 질의
@@ -123,7 +123,7 @@ aws route53resolver create-resolver-rule --rule-type FORWARD --domain-name corp.
 ```
 Client VPN + 온프렘 DNS 연동, 또는 특정 도메인만 다른 리졸버로 보낼 때.
 
-## 케이스 F — PHZ 없이 split-view (PHZ 금지 시)
+## 케이스 F — PHZ 없이 split-view (PHZ 금지 시) [검증됨: 퍼블릭 존이 사설 IP 반환]
 
 PHZ 를 금지한 과제라면:
 - **Resolver rule** 로 특정 도메인 질의를 내부 리졸버로 포워딩.

@@ -40,7 +40,7 @@ ACL=$(aws wafv2 create-web-acl --region $R --name lab-waf --scope REGIONAL \
 - **rate limit**: `Limit`(최소 10) + `EvaluationWindowSec`(60/120/300/600) + `AggregateKeyType`(IP/FORWARDED_IP/...).
 - **custom 403 body**: `--custom-response-bodies` 로 key 정의 → 룰에서 `CustomResponseBodyKey` 참조. Rate-based statement 예제의 `Limit` 는 과제지 값(예 50)으로.
 
-## 케이스 B — 리소스 연결
+## 케이스 B — 리소스 연결 [검증됨: topics/waf]
 
 ```bash
 # ALB (REGIONAL)
@@ -52,7 +52,7 @@ aws wafv2 associate-web-acl --region $R \
 
 > 📎 **rule statement 12종 모음**: `waf/rule-statements.json` — managed(Common/SQLi/BadInputs/오버라이드), rate limit(IP/경로별), IP set, geo(허용/차단), 헤더매칭, AND 조합, size 제약까지 전부 실제 create-web-acl 로 검증. **CLI 주의**: ByteMatch `SearchString` 은 base64 인코딩 필수(콘솔·TF 는 평문).
 
-## 케이스 C — IP set / geo match
+## 케이스 C — IP set / geo match [검증됨: topics/waf 03 — ipset+3rules]
 
 ```bash
 # IP set (차단/허용 목록)
@@ -65,7 +65,7 @@ IPSET=$(aws wafv2 create-ip-set --region $R --name lab-block --scope REGIONAL \
 # "KR 외 차단": NotStatement + GeoMatchStatement
 ```
 
-## 케이스 D — 로깅
+## 케이스 D — 로깅 [검증됨: topics/waf 05 — 12rule ACL + CW 로그그룹 연결]
 
 ```bash
 # WAF 로그 → CloudWatch Logs (로그 그룹명은 aws-waf-logs- 접두어 필수)

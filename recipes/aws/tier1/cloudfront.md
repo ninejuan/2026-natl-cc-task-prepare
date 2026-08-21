@@ -78,7 +78,7 @@ aws cloudfront create-vpc-origin --vpc-origin-endpoint-config '{
 ```
 "유저는 CloudFront 로만, 이후 내부 ALB 로" 요구 → **Internal ALB + VPC Origin**. ALB 를 인터넷에 노출 안 한다.
 
-## 케이스 C — 다중 오리진 + behavior 경로 분기
+## 케이스 C — 다중 오리진 + behavior 경로 분기 [검증됨: topics/cdn 04 — ordered behavior Deployed]
 
 ```json
 "Origins": {"Quantity": 2, "Items": [
@@ -116,7 +116,7 @@ aws cloudfront publish-function --name lab-viewer-fn --if-match "$ETAG"
 - Functions: 뷰어 req/res 만, 짧고 빠름(헤더·URI·쿠키). **Lambda@Edge**: 오리진 req/res 도, 무겁고 느림(이미지 리사이징 등 로직).
 - `test-function` 으로 배포 전 검증 — 가장 빠른 디버깅.
 
-## 케이스 E — Lambda@Edge (이미지 리사이징 등)
+## 케이스 E — Lambda@Edge (이미지 리사이징 등) [검증됨: topics/cdn 03 — Node20+sharp, ?w=100→100×75 PNG]
 
 ```bash
 # ★ 반드시 us-east-1 에서 함수 생성 + 버전 발행(ARN 에 버전 필수, $LATEST 불가)

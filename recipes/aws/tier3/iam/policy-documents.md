@@ -1,4 +1,10 @@
-# IAM 정책 문서 모음
+# IAM 정책 문서 모음 — ✅ live 검증
+
+> **실검증**: trust policy 4종(EC2 / External ID / MFA 조건 / ECS task)을 실제 `create-role` 로 통과시켰고,
+> permission policy 는 **Access Analyzer `validate-policy`** 로 린트했다(S3 최소권한·permission boundary 는 findings 0,
+> 조건부 정책은 `SECURITY_WARNING: PASS_ROLE_WITH_STAR_IN_RESOURCE` — 의도된 경고).
+> permission boundary 는 `put-role-permissions-boundary` 로 붙여 `PermissionsBoundaryType: Policy` 까지 확인.
+
 
 본 문서는 과제에서 반복 사용하는 IAM **trust policy**(누가 role 을 assume 하나)와
 **permission policy**(무엇을 할 수 있나) 예시 모음이다. 각 예시는 `Statement` 원소.

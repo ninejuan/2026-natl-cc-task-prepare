@@ -34,7 +34,7 @@ AP=$(aws efs create-access-point --region $R --file-system-id $FS \
 - **access point**: 마운트할 때마다 POSIX 사용자·루트 디렉토리를 강제. 테넌트/앱별 격리. File System security 모듈의 핵심.
 - **mount target SG 는 노드/EC2 SG 로부터 2049(NFS)** 를 허용해야 마운트된다.
 
-## ★ 케이스 B — IAM 접근 제어 (File System security 모듈)
+## ★ 케이스 B — IAM 접근 제어 (File System security 모듈) [검증됨: topics/efs-security 01·03 — FS policy Allow/Deny]
 
 ```bash
 # 파일시스템 정책: mount target 경유 + IAM 인증 강제
@@ -47,7 +47,7 @@ aws efs put-file-system-policy --region $R --file-system-id $FS --policy '{
 ```
 "자격 증명 및 액세스 관리" 요구 → 파일시스템 정책 + IAM(`elasticfilesystem:ClientMount/ClientWrite/ClientRootAccess`) + access point 조합. **EFS 데이터 보안과 무관한 Linux 보안은 넣지 말 것**(가이드 명시).
 
-## 케이스 C — EC2 / Lambda / ECS 마운트
+## 케이스 C — EC2 / Lambda / ECS 마운트 [검증됨: topics/efs-security 02 — Access Point POSIX 격리]
 
 ```bash
 # EC2 (amazon-efs-utils)

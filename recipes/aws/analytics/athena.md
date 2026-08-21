@@ -56,11 +56,11 @@ aws athena get-query-results --region $R --query-execution-id $QID \
   --query 'ResultSet.Rows[].Data[].VarCharValue' --output text
 ```
 
-## 케이스 B — Glue crawler 자동 스키마
+## 케이스 B — Glue crawler 자동 스키마 [검증됨: analytics/glue 케이스 C 워크플로에서 크롤러가 파티션키까지 인식]
 
 파일 구조가 복잡하거나 스키마를 모를 때. `../analytics/glue/` 참조. crawler 가 카탈로그를 채우면 Athena 가 그대로 쿼리.
 
-## 케이스 C — CTAS (결과를 Parquet 로 저장)
+## 케이스 C — CTAS (결과를 Parquet 로 저장) [검증됨: pipeline TF — Athena 쿼리 click 5]
 
 ```sql
 CREATE TABLE lab_db.events_parquet
@@ -69,7 +69,7 @@ AS SELECT event_type, id, dt FROM lab_db.events;
 ```
 원본 JSON 을 컬럼형으로 재적재 → 이후 쿼리 스캔량·비용 급감. ETL 을 SQL 로.
 
-## 케이스 D — workgroup (결과 위치·비용 제어)
+## 케이스 D — workgroup (결과 위치·비용 제어) [검증됨: pipeline TF 로 workgroup/DB 생성 후 쿼리]
 
 ```bash
 aws athena create-work-group --region $R --name lab-wg \

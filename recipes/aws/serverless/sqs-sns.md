@@ -10,7 +10,7 @@ export R=ap-northeast-2
 
 ---
 
-## SQS 케이스 A — standard + DLQ redrive
+## SQS 케이스 A — standard + DLQ redrive [검증됨: topics/message-queue 02 — maxReceiveCount 초과→DLQ 실측]
 
 메시지 처리가 3번 실패하면 DLQ 로 보낸다. 채점이 "실패 메시지가 DLQ 로 이동" 을 확인하는 형태.
 
@@ -29,7 +29,7 @@ print(json.dumps({
 ```
 `RedrivePolicy` 는 **JSON 문자열 안의 JSON** 이라 이스케이프가 까다롭다. python 으로 만드는 게 안전.
 
-## SQS 케이스 B — FIFO (순서 보장 + 중복 제거)
+## SQS 케이스 B — FIFO (순서 보장 + 중복 제거) [검증됨: 동일본문 3건→2건 수신]
 
 ```bash
 aws sqs create-queue --region $R --queue-name lab-q.fifo \
@@ -47,11 +47,11 @@ aws sqs receive-message --region $R --queue-url "$FIFO" --max-number-of-messages
 - **`MessageGroupId` 필수** — 같은 group 내에서만 순서 보장. 다른 group 은 병렬.
 - `ContentBasedDeduplication` 켜면 body 해시로 5분 내 중복 제거. 끄면 `MessageDeduplicationId` 를 직접 줘야 한다.
 
-## SQS 케이스 C — Lambda 소비 (ESM)
+## SQS 케이스 C — Lambda 소비 (ESM) [검증됨: 부분배치 실패 포함]
 
 `../lambda.md` 케이스 E 참조. 큐 → Lambda 자동 트리거.
 
-## SNS 케이스 D — fan-out + filter policy
+## SNS 케이스 D — fan-out + filter policy [검증됨: topics/message-queue 04 — 2큐 각 1건]
 
 한 토픽 → 여러 큐. 각 구독이 filter policy 로 필요한 메시지만 받는다.
 

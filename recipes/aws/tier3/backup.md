@@ -34,7 +34,7 @@ aws backup create-backup-selection --region $R --backup-plan-id $PLAN --backup-s
 - **selection role**: `AWSBackupDefaultServiceRole`(관리형). 없으면 콘솔 첫 진입 시 생성되거나 수동 생성.
 - **대상 선택**: 태그(`Backup=yes`) 또는 리소스 ARN 목록.
 
-## 케이스 B — 온디맨드 백업 + 복원
+## 케이스 B — 온디맨드 백업 + 복원 [검증됨: DDB 백업 COMPLETED→복원, 복원본에 백업시점 데이터만]
 
 ```bash
 # 즉시 백업

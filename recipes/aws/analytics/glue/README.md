@@ -50,7 +50,7 @@ aws glue get-table --region $R --database-name lab_db --name <table> \
 - 스케줄 실행: `--schedule "cron(0 * * * ? *)"`.
 - 재크롤 정책: 새 파일만 볼지 전체 볼지 `RecrawlPolicy`.
 
-## 케이스 B — ETL Job (JSON → Parquet)
+## 케이스 B — ETL Job (JSON → Parquet) [검증됨: Glue 4.0 job SUCCEEDED → event_type 파티션 parquet]
 
 `etl_json_to_parquet.py`(변환·Parquet) 또는 `etl_aggregate_join.py`(집계+조인+DQ, Spark SQL) 참조. S3 JSON 을 읽어 타입 정리 후 Parquet(dt 파티션)로 저장.
 
@@ -75,7 +75,7 @@ aws glue get-job-run --region $R --job-name lab-etl --run-id "$RUN" \
 - **비용 주의**: DPU-시간 과금. 작은 데이터면 worker 2개로 제한.
 - Visual ETL(콘솔)로 만든 것도 스크립트로 저장된다.
 
-## 케이스 C — Workflow (Crawler → Job 오케스트레이션)
+## 케이스 C — Workflow (Crawler → Job 오케스트레이션) [검증됨: 2 액션 전부 SUCCEEDED, 크롤러가 파티션키 인식]
 
 ```bash
 aws glue create-workflow --region $R --name lab-wf

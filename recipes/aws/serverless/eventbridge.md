@@ -15,7 +15,7 @@ export R=ap-northeast-2
 
 ---
 
-## 케이스 A — Rule (이벤트 패턴 → 타깃)
+## 케이스 A — Rule (이벤트 패턴 → 타깃) [검증됨: topics/cloud-governance 01 — SG 자동복구]
 
 SG 변경, EC2 상태 변화, S3 업로드 등을 감지. governance/event handling 모듈의 핵심.
 
@@ -47,7 +47,7 @@ aws events put-targets --region $R --rule lab-sg-rule \
 }}
 ```
 
-## 케이스 B — Scheduler (시간 기반)
+## 케이스 B — Scheduler (시간 기반) [검증됨: TF apply→SQS]
 
 ```bash
 cat > trust.json <<'JSON'
@@ -73,7 +73,7 @@ aws scheduler create-schedule --region $R --name lab-sched \
 - **Scheduler role 필요** — 타깃 서비스 호출 권한. Rule(EventBridge)과 달리 Scheduler 는 항상 role 로 호출.
 - 일회성은 `at(...)` + `--action-after-completion NONE`.
 
-## 케이스 C — Pipes (source → filter → enrich → target)
+## 케이스 C — Pipes (source → filter → enrich → target) [검증됨: topics/message-queue 05 — pipe RUNNING]
 
 SQS/Kinesis/DDB Stream/MSK 를 source 로, 다른 서비스로 point-to-point 연결. Lambda 글루 코드를 없앤다.
 
@@ -102,7 +102,7 @@ aws pipes describe-pipe --region $R --name lab-pipe --query CurrentState --outpu
 - filter 로 특정 메시지만 통과. enrichment(Lambda/API destination)로 변환 삽입 가능.
 - target 파라미터로 변환(`TargetParameters.InputTemplate`) 가능.
 
-## 케이스 D — custom bus + archive/replay
+## 케이스 D — custom bus + archive/replay [검증됨: 전용 버스→CW 3건, archive EventCount 3, replay COMPLETED]
 
 ```bash
 aws events create-event-bus --region $R --name lab-bus

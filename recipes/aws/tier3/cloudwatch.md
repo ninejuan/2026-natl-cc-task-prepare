@@ -54,7 +54,7 @@ JSON 로그의 `level=ERROR` 를 세어 `Lab/AppErrors` 메트릭으로. 이 메
 
 > 📎 **Logs Insights 쿼리 15종 모음**: `cloudwatch/logs-insights.md` — 필터/집계/시계열(bin)/백분위(pct)/정규식 parse/IP Top/5xx 상세/에러율/distinct/Lambda REPORT·콜드스타트/VPC Flow REJECT 까지 전부 실검증. Athena.md 식 복붙 컬렉션.
 
-## 케이스 D — Log Insights 쿼리
+## 케이스 D — Log Insights 쿼리 [검증됨: tier3/cloudwatch/logs-insights.md 15종]
 
 ```bash
 QID=$(aws logs start-query --region $R --log-group-name /lab/app \
@@ -66,7 +66,7 @@ aws logs get-query-results --region $R --query-id $QID --query 'results' --outpu
 ```
 자주 쓰는 구문: `fields`·`filter`·`stats count() by`·`sort`·`limit`·`parse`.
 
-## 케이스 E — EMF (Embedded Metric Format)
+## 케이스 E — EMF (Embedded Metric Format) [검증됨: 로그 3줄→커스텀 메트릭 Sum=21/Max=7]
 
 앱이 로그에 특정 JSON 을 쓰면 CloudWatch 가 자동으로 메트릭 추출. Lambda 에서 커스텀 메트릭을 PutMetricData API 없이.
 ```json

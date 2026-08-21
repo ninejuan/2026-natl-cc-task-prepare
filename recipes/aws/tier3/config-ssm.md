@@ -30,7 +30,7 @@ aws ssm get-parameters-by-path --region $R --path /lab/app --recursive --with-de
 - **SecureString** 은 KMS 로 암호화. 읽는 주체에 `kms:Decrypt` + `ssm:GetParameter`.
 - Lambda/ECS 에서 참조: 환경변수 대신 런타임에 `get-parameter`, 또는 ECS `secrets` 로 주입.
 
-## ★ 케이스 B — 자동 복구 (EventBridge + Lambda, 권장 경로)
+## ★ 케이스 B — 자동 복구 (EventBridge + Lambda, 권장 경로) [검증됨: topics/cloud-governance 01 — SG 0.0.0.0/0 자동 revoke]
 
 "SG 에 0.0.0.0/0 인바운드가 추가되면 즉시 제거" 형. **가장 빠르고 3분 채점 안에 확실.**
 
@@ -65,7 +65,7 @@ aws configservice put-remediation-configurations --remediation-configurations '[
 ```
 Config 는 평가에 수 분 걸려 **채점 3분 제약과 안 맞을 수 있다**. governance 를 빠르게 보여줘야 하면 케이스 B(EventBridge).
 
-## 케이스 D — SSM Run Command / Session Manager / Automation
+## 케이스 D — SSM Run Command / Session Manager / Automation [검증됨: send-command 로 in-VPC 검증 다수(psql/mongosh/dig)]
 
 ```bash
 # Run Command (EC2 에 명령, SSH 없이) — 채점이 EC2 내부 상태 확인에 씀

@@ -14,7 +14,7 @@ Data Streams(샤드 기반 스트림)와 Firehose(→S3/OpenSearch 배달)는 �
 
 ---
 
-## 케이스 A — Data Streams
+## 케이스 A — Data Streams [검증됨: put-records 10→get-records 10, 보존 24→48h, 샤드 1→2]
 
 ```bash
 # on-demand (샤드 관리 불필요, 대회 권장). provisioned 는 --shard-count N
@@ -93,7 +93,7 @@ aws s3 ls s3://$BUCKET/events/ --recursive
 - **JSON→Parquet 변환**: `DataFormatConversionConfiguration` 에 Glue 테이블 스키마 지정. 컬럼형이라 Athena 스캔이 훨씬 싸다.
 - **버퍼**: `IntervalInSeconds` 최소 60(동적 파티셔닝 시). 채점 대기와 안 맞으면 직접 발행 후 기다려야 한다 — **Firehose 는 즉시 안 나온다**.
 
-## 케이스 C — Firehose → OpenSearch
+## 케이스 C — Firehose → OpenSearch [검증됨: fh-logs-YYYY-MM-DD 인덱스에 20건 + S3 백업]
 
 ```bash
 # --opensearch-destination-configuration 로 대상 변경. 로그 검색 파이프라인.

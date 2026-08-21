@@ -79,7 +79,7 @@ aws servicediscovery list-instances --region $R --service-id $SDID --query 'Inst
 # 다른 task 에서: curl http://web.lab.local
 ```
 
-## 케이스 C — ALB 연동
+## 케이스 C — ALB 연동 [검증됨: topics/cicd CodeDeploy blue/green — ALB+TG]
 
 ```bash
 # target-type ip (Fargate awsvpc). TG → service loadBalancers
@@ -91,7 +91,7 @@ aws ecs create-service --region $R --cluster lab-ecs --service-name lab-web \
 ```
 TG 는 **target-type=ip**(instance 아님). ALB SG → task SG 80 허용.
 
-## 케이스 D — FireLens (중앙 집중 로깅, 2025 logging 모듈)
+## 케이스 D — FireLens (중앙 집중 로깅, 2025 logging 모듈) [검증됨: topics/ecs-logging 02·03·04 — CW/OpenSearch/S3 전부]
 
 ```json
 "containerDefinitions": [
@@ -104,7 +104,7 @@ TG 는 **target-type=ip**(instance 아님). ALB SG → task SG 80 허용.
 ```
 사이드카(log-router)가 앱 로그를 받아 CloudWatch/OpenSearch/S3 로. `awslogs`(단순) vs `awsfirelens`(가공·다중 목적지).
 
-## 케이스 E — ECS Exec (디버깅)
+## 케이스 E — ECS Exec (디버깅) [검증됨: execute-command 로 컨테이너 내부 hostname/id/python 실행]
 
 ```bash
 aws ecs update-service --region $R --cluster lab-ecs --service lab-svc --enable-execute-command

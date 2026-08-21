@@ -11,7 +11,7 @@ export R=ap-northeast-2
 
 ---
 
-## 케이스 A — DNS 검증 (Route53 자동)
+## 케이스 A — DNS 검증 (Route53 자동) [검증됨: PENDING_VALIDATION + 검증 CNAME 발급]
 
 DNS 검증이 가장 빠르고 자동 갱신된다. Route53 을 쓰면 검증 레코드를 자동 생성.
 
@@ -36,7 +36,7 @@ aws route53 change-resource-record-sets --hosted-zone-id $ZONE --change-batch '{
 aws acm wait certificate-validated --region us-east-1 --certificate-arn "$CERT"
 ```
 
-## 케이스 B — 와일드카드 / SAN (다중 도메인)
+## 케이스 B — 와일드카드 / SAN (다중 도메인) [검증됨: *.dom + SAN 2개, 도메인별 검증상태]
 
 ```bash
 aws acm request-certificate --region us-east-1 \

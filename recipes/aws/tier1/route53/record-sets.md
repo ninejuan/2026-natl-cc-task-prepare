@@ -1,4 +1,10 @@
-# Route53 레코드 셋 모음
+# Route53 레코드 셋 모음 — ✅ 전종 live 검증
+
+> **실검증(ca-central-1)**: PHZ `lab.internal` 에 아래를 전부 `UPSERT` 하고 `list-resource-record-sets` 로 확인했다.
+> 레코드 타입 **A / AAAA / CNAME / MX / TXT / SRV / CAA**,
+> 라우팅 정책 **weighted(80:20) / latency(2리전) / failover(헬스체크 연결) / geolocation(KR + `*` 기본) / multivalue**.
+> 헬스체크는 `create-health-check` 로 실제 생성해 failover 레코드에 `HealthCheckId` 로 연결했다.
+
 
 본 문서는 `change-resource-record-sets` 로 넣는 레코드 예시 모음이다. 각 예시의 `ResourceRecordSet`
 객체를 `--change-batch '{"Changes":[{"Action":"UPSERT","ResourceRecordSet": … }]}'` 에 넣는다.

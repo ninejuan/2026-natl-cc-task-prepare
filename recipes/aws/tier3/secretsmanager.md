@@ -27,7 +27,7 @@ aws secretsmanager put-resource-policy --region $R --secret-id lab/db --resource
     "Action":"secretsmanager:GetSecretValue","Resource":"*"}]}'
 ```
 
-## 케이스 B — 자동 회전 (Lambda)
+## 케이스 B — 자동 회전 (Lambda) [검증됨: rotate-secret→AWSCURRENT/AWSPREVIOUS 전환, 비번 실제 변경]
 
 ```bash
 # RDS 관리형 회전: RDS 와 연결하면 AWS 제공 회전 Lambda 자동 구성
@@ -38,7 +38,7 @@ aws secretsmanager rotate-secret --region $R --secret-id lab/db \
 ```
 회전 Lambda 4단계(createSecret/setSecret/testSecret/finishSecret). RDS/Aurora 는 AWS 제공 템플릿.
 
-## 케이스 C — RDS/애플리케이션 참조
+## 케이스 C — RDS/애플리케이션 참조 [검증됨: boto3 조회 + RDS managed master secret(topics/rds-connection)]
 
 ```bash
 # ECS: task definition secrets
