@@ -227,7 +227,7 @@ tier3 lab 전량 정리.
 # 2026-08-21 추가 라이브 검증 (계정 전환 후 이어서)
 
 이 세션에서 **파일만/문서형이던 케이스를 실계정으로 밀어붙인** 결과. 전부 생성→검증→삭제 완료, 계정 잔재 0
-(예외: Lambda@Edge 복제본 회수 대기 중인 `lab-edge-resize2/3` + `lab-edge-role` — 과금 없음, 수 시간 뒤 삭제 가능).
+(Lambda@Edge 복제본 회수 후 `lab-edge-*` 까지 삭제 완료 — 최종 잔재 0).
 
 | 케이스 | 리전 | 결과 | 무엇을 실제로 확인했나 |
 |---|---|---|---|
@@ -306,5 +306,6 @@ tier3 lab 전량 정리.
 ## 계정 최종 상태 (전 리전 스윕)
 
 - 검증용 리소스 **잔재 0**. Macie 는 원래대로 **미활성** 복원.
-- 유일한 잔여: `lab-edge-resize2/3`(us-east-1 Lambda@Edge) — **엣지 복제본 회수 대기라 삭제 불가**, 과금 없음. 수 시간 뒤 `delete-function` 가능. `lab-edge-role` 도 그때 같이 삭제.
+- **잔여 0** — Lambda@Edge 복제본도 회수되어 `lab-edge-resize2/3` + `lab-edge-role` 까지 전부 삭제 완료.
+  (Lambda@Edge 는 배포에서 association 을 떼고 배포를 지운 뒤 **복제본 회수까지 기다려야** 삭제된다 — 그 전엔 `InvalidParameterValueException: … because it is a replicated function`.)
 - `apdev-*`(task3 연습 인프라)는 손대지 않았다.
