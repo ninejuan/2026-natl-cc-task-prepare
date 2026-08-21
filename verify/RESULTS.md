@@ -533,7 +533,7 @@ put-remediation-configurations → AWS-DisablePublicAccessForSecurityGroup, Auto
 | 영역 | 단위 | 검증 완료 | 비고 |
 |---|---|---|---|
 | `recipes/topics/` | 케이스 97개 | **87** | 남은 10 = k8s 패스(사용자 담당) |
-| `recipes/aws/` | 케이스 헤더 95개 | **94~95** | 마지막 1건 = ActiveMQ pub/sub |
+| `recipes/aws/` | 케이스 헤더 95개 | **95 (전부)** | ActiveMQ 까지 완료 |
 | `recipes/k8s/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
 | `recipes/cncf/` | md 파일 | 0 | **전량 미검증** — 사용자 k8s 패스 |
 
@@ -559,3 +559,22 @@ Macie 미활성 복원, SAML provider 0, GitHub OIDC provider 삭제, Route53 �
 - **브라우저·외부 SaaS 가 필요한 것**: Keycloak 로그인 플로우, ArgoCD UI, Client VPN 실제 터널(GUI 클라이언트),
   Zeppelin 노트북 화면(단, REST 로 실행·결과 확인은 완료).
 - **IdC(Identity Center)** 는 org 멤버 계정이라 **구조적으로 불가**(인스턴스 quota + 접근 거부) — 대안은 SAML 페더레이션.
+
+## 4차 마지막 — ActiveMQ publish/consume (sa-east-1)
+
+SG 를 열고 재시도하니 **원인이 SG 였음이 확정**됐다.
+```
+(SG 미지정 default SG) → port 61614 연결 타임아웃
+(SG 에 61617/5671/61614/8883/61619/8162 인바운드 추가) →
+  port 61614 OPEN / 61617 OPEN / 8162 OPEN
+  STOMP CONNECTED → published 5 → consumed 5 (id 0~4 전부 정확)
+```
+- 클라이언트는 **표준 라이브러리만 쓰는 `stomp_client.py`** 로 새로 만들었다.
+  `stomp.py` 9.0.0 은 macOS 에서 `'<stomp.utils.PollableQueue …> is not registered'` 로 죽는다(실측).
+  STOMP 1.2 프레임(`CONNECT`/`SEND`/`SUBSCRIBE`/`DISCONNECT`)을 직접 만들면 의존성 0 으로 동작한다 —
+  **대회 PC 에서 pip 설치가 막혀도 쓸 수 있다.**
+- ActiveMQ 웹콘솔 REST(`/api/message`)는 **302 리다이렉트**(세션 로그인 필요)라 curl 로는 바로 안 된다. STOMP 가 답.
+- ActiveMQ 프로토콜 엔드포인트: OpenWire `ssl://…:61617` / AMQP `amqp+ssl://…:5671` /
+  STOMP `stomp+ssl://…:61614` / MQTT `mqtt+ssl://…:8883` / WSS `wss://…:61619` / 콘솔 `:8162`.
+
+→ **`recipes/aws` 케이스 헤더 95개 전부 검증 표기 완료 (95/95).**

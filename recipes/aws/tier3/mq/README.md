@@ -47,7 +47,7 @@ python3 consumer.py    # ack 하며 소비
 - **amqps://**(TLS) 5671. 평문 5672 아님(MQ 는 TLS 강제).
 - 큐 `durable=True` + 메시지 `delivery_mode=2`(persistent) → 브로커 재시작에도 유지.
 
-## 케이스 C — ActiveMQ (JMS/STOMP/MQTT)
+## 케이스 C — ActiveMQ (JMS/STOMP/MQTT) [검증됨: STOMP+SSL 61614 로 5건 발행→5건 소비 (`stomp_client.py`)]
 
 ```bash
 aws mq create-broker --region $R --broker-name lab-amq \
