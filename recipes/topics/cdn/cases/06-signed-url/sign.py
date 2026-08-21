@@ -2,8 +2,9 @@
 """CloudFront signed URL — 콘텐츠 보호(만료시각까지만 접근). 키그룹/트러스티드 키 방식.
 사전준비:
   openssl genrsa -out priv.pem 2048; openssl rsa -pubout -in priv.pem -out pub.pem
-  aws cloudfront create-public-key --public-key-config ...(pub.pem, CallerReference)
-  aws cloudfront create-key-group --key-group-config ...(위 public key id)
+  aws cloudfront create-public-key --public-key-config '{"CallerReference":"r","Name":"pk","EncodedKey":"<pub.pem 내용>"}'
+  # ★ key-group-config 는 CallerReference 없음(실측). Name+Items 만.
+  aws cloudfront create-key-group --key-group-config '{"Name":"kg","Items":["<public-key-id>"]}'
   배포의 behavior 에 TrustedKeyGroups 연결(그 behavior 는 서명 없으면 403).
 서명:  pip install cryptography botocore
   python3 sign.py https://d123.cloudfront.net/private/file.mp4 <keypair_id>

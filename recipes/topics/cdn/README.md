@@ -20,7 +20,7 @@
 | 03 | Lambda@Edge: 이미지 리사이징 | origin-response | `cases/03-lambda-edge/` — association·배포 실검증, python3.12 는 502(런타임 제약) → Node.js |
 | 04 | behavior 경로 분기 | /api/* → 다른 origin | ✅ live(ordered behavior `/api/*` config 수락 + Deployed) |
 | 05 | origin failover | origin group 500/502 | ✅ live(OriginGroups FailoverCriteria 500/502 config 수락 + Deployed) |
-| 06 | signed URL/cookie | 콘텐츠 보호 | `cases/06-signed-url/sign.py` (키그룹+RSA 서명) |
+| 06 | signed URL/cookie | 콘텐츠 보호 | ✅ live(public key+key group 생성, signed URL 서명) |
 
 ### 01/02 실검증 결과 (ap-northeast-1 + CloudFront 글로벌, 2026-08-20)
 
