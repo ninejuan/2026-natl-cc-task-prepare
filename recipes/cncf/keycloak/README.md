@@ -18,7 +18,7 @@ EC2 쪽이 요구사항이면 k8s 매니페스트를 쓰지 마라. 채점이 EC
 | 파일 | 케이스 |
 |---|---|
 | [`ec2-userdata.sh`](ec2-userdata.sh) | EC2 에 Docker 로 Keycloak + Postgres. systemd 서비스로 등록 |
-| [`namespace.yaml`](namespace.yaml) · [`secret.yaml`](secret.yaml) · [`statefulset-postgres.yaml`](statefulset-postgres.yaml) · [`service-postgres.yaml`](service-postgres.yaml) | k8s 배포용 DB |
+| [`00-namespace.yaml`](00-namespace.yaml) · [`secret.yaml`](secret.yaml) · [`statefulset-postgres.yaml`](statefulset-postgres.yaml) · [`service-postgres.yaml`](service-postgres.yaml) | k8s 배포용 DB |
 | [`deployment.yaml`](deployment.yaml) · [`service.yaml`](service.yaml) · [`ingress-alb.yaml`](ingress-alb.yaml) | k8s 배포용 Keycloak |
 | [`realm-import-aws-saml.json`](realm-import-aws-saml.json) | **realm 통째 import** — client·mapper·user·role 을 한 번에 |
 | [`setup-aws-saml.sh`](setup-aws-saml.sh) | AWS 쪽 설정 (SAML Provider + IAM Role 2개) |

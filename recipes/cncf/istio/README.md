@@ -44,7 +44,7 @@ kubectl get pods -n app -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{len
 
 | 파일 | 케이스 |
 |---|---|
-| [`namespace-injection.yaml`](namespace-injection.yaml) | 주입 label 이 붙은 네임스페이스 |
+| [`00-namespace-injection.yaml`](00-namespace-injection.yaml) | 주입 label 이 붙은 네임스페이스 |
 | [`values-ingressgateway-nlb.yaml`](values-ingressgateway-nlb.yaml) | 인그레스 게이트웨이를 NLB 로 노출 |
 | [`gateway.yaml`](gateway.yaml) | Istio Gateway (외부 진입점) |
 | [`virtualservice-basic.yaml`](virtualservice-basic.yaml) | 경로 기반 라우팅 |

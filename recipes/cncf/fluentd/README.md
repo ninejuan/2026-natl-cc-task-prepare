@@ -27,7 +27,7 @@ helm upgrade --install fluentd fluent/fluentd -n logging --create-namespace --ve
 
 | 파일 | 케이스 |
 |---|---|
-| [`namespace.yaml`](namespace.yaml) | logging 네임스페이스 |
+| [`00-namespace.yaml`](00-namespace.yaml) | logging 네임스페이스 |
 | [`serviceaccount.yaml`](serviceaccount.yaml) | IRSA |
 | [`clusterrole.yaml`](clusterrole.yaml) · [`clusterrolebinding.yaml`](clusterrolebinding.yaml) | 파드 메타데이터 조회 권한 |
 | [`configmap-reformat-cloudwatch.yaml`](configmap-reformat-cloudwatch.yaml) | **로그 형식 변환** — 중첩 필드를 평탄화하고 지정된 스키마로 재조립 |

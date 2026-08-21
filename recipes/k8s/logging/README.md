@@ -25,12 +25,12 @@ eksctl create iamserviceaccount --cluster $CLUSTER --region $R \
   --approve --override-existing-serviceaccounts
 ```
 
-`eksctl create iamserviceaccount` 가 네임스페이스와 SA 를 함께 만든다. 그 경우 `namespace.yaml`·`serviceaccount.yaml` 은 생략한다.
+`eksctl create iamserviceaccount` 가 네임스페이스와 SA 를 함께 만든다. 그 경우 `00-namespace.yaml`·`serviceaccount.yaml` 은 생략한다.
 
 ## 적용
 
 ```bash
-kubectl apply -f namespace.yaml
+kubectl apply -f 00-namespace.yaml
 kubectl apply -f fluentbit-serviceaccount.yaml    # eksctl 로 만들었으면 생략
 kubectl apply -f fluentbit-clusterrole.yaml
 kubectl apply -f fluentbit-clusterrolebinding.yaml
@@ -43,7 +43,7 @@ kubectl -n logging rollout status ds/fluent-bit
 
 | 파일 | 리소스 |
 |---|---|
-| `namespace.yaml` | Namespace `logging` |
+| `00-namespace.yaml` | Namespace `logging` |
 | `fluentbit-serviceaccount.yaml` | SA + IRSA annotation |
 | `fluentbit-clusterrole.yaml` · `-clusterrolebinding.yaml` | 파드 메타데이터 조회 권한 |
 | `fluentbit-configmap.yaml` | 파이프라인 — tail → kubernetes → parser → grep → record_modifier → cloudwatch |

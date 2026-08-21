@@ -5,7 +5,7 @@
 ## 적용
 
 ```bash
-kubectl apply -f namespace.yaml
+kubectl apply -f 00-namespace.yaml
 kubectl apply -f configmap.yaml
 kubectl apply -f serviceaccount.yaml     # IRSA 가 필요하면 ../identity/ 쪽을 쓴다
 kubectl apply -f deployment.yaml
@@ -19,7 +19,7 @@ kubectl apply -f pdb.yaml
 
 | 파일 | 리소스 |
 |---|---|
-| `namespace.yaml` | Namespace |
+| `00-namespace.yaml` | Namespace |
 | `configmap.yaml` | ConfigMap — 앱 환경변수 (`AWS_REGION`, `TABLE_NAME`) |
 | `serviceaccount.yaml` | ServiceAccount |
 | `deployment.yaml` | Deployment — probe·preStop·topologySpread·nodeSelector·resources |

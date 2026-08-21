@@ -7,7 +7,7 @@
 대회 규모에선 all-in-one 이 정답이다. 메모리 저장이라 파드 하나로 끝나고 Elasticsearch 가 필요 없다.
 
 ```bash
-kubectl apply -f namespace.yaml
+kubectl apply -f 00-namespace.yaml
 kubectl apply -f deployment-allinone.yaml
 kubectl apply -f service.yaml
 kubectl apply -f ingress-alb.yaml
@@ -32,7 +32,7 @@ Operator 를 쓰는 경우 `Jaeger` CR 로 정의한다 ([`jaeger-cr.yaml`](jaeg
 
 | 파일 | 케이스 |
 |---|---|
-| [`namespace.yaml`](namespace.yaml) | observability 네임스페이스 |
+| [`00-namespace.yaml`](00-namespace.yaml) | observability 네임스페이스 |
 | [`deployment-allinone.yaml`](deployment-allinone.yaml) | all-in-one. OTLP 수신 + UI |
 | [`service.yaml`](service.yaml) | UI(16686) + OTLP(4317/4318) |
 | [`ingress-alb.yaml`](ingress-alb.yaml) | ALB 로 UI 노출 |
