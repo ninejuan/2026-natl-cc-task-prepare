@@ -473,3 +473,30 @@ CustomErrorResponses: 403→404 /error404.html (TTL 10), 404→404 /error404.htm
 5) 전체 무효화 '/*' 도 수락(InProgress)
 ```
 → **원본만 바꾸고 무효화를 안 하면 채점자가 옛 내용을 본다.** 배포 후 반드시 `create-invalidation`.
+
+## 4차 추가 — Amazon MQ (sa-east-1)
+
+### 케이스 B — RabbitMQ publish/consume ✅
+```
+RHOST = b-xxxx.mq.sa-east-1.on.aws        ← ★ RabbitMQ 퍼블릭 엔드포인트는 .on.aws
+published 5 → consumed 5 (id 0~4 전부 정확) → queue depth 0
+```
+pika + AMQPS(5671) + `ssl.create_default_context()`. `queue_declare(durable=True)` + `delivery_mode=2`.
+
+### ★ 인스턴스 타입 함정 (실측)
+```
+BadRequestException: Broker engine type [RabbitMQ] does not support host instance type [mq.t3.micro]
+```
+`describe-broker-instance-options --engine-type RABBITMQ` 로 확인한 **최소 사양: `mq.m7g.medium` / `mq.m5.large`**
+(ap-northeast-2 도 동일). **ActiveMQ 만 `mq.t3.micro` 가 된다.** 기존 카드의 "RabbitMQ t3.micro 미지원" 을 API 로 확정.
+
+### ★ 네트워크 모델이 엔진마다 다르다 (실측)
+| | RabbitMQ | ActiveMQ |
+|---|---|---|
+| 퍼블릭 엔드포인트 | `<id>.mq.<region>.**on.aws**` | `<id>-1.mq.<region>.amazonaws.com` |
+| 보안그룹 | **안 탄다** — `--publicly-accessible` 면 바로 접속 | **탄다** — `SecurityGroups`/`SubnetIds` 를 실제로 사용 |
+| 결과 | SG 지정 없이 로컬 pika 접속 성공 | SG 미지정(default SG) → **61614 연결 타임아웃** |
+
+→ **ActiveMQ 를 퍼블릭으로 쓰려면 SG 인바운드를 직접 열어야 한다**:
+OpenWire `61617` / AMQPS `5671` / STOMP `61614` / MQTT `8883` / WSS `61619` / 웹콘솔 `8162`.
+"publicly accessible = 바로 붙는다" 가 아니다. 이걸 모르면 원인 못 찾고 시간만 버린다.

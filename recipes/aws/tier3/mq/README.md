@@ -34,7 +34,7 @@ aws mq describe-broker --region $R --broker-id $BROKER \
 - **deployment**: SINGLE_INSTANCE(개발) / CLUSTER_MULTI_AZ(RabbitMQ HA) / ACTIVE_STANDBY(ActiveMQ HA).
 - **publiclyAccessible**: 검증 편의. 실전은 VPC 내부 + SG 로 5671 제한.
 
-## 케이스 B — publish / consume (pika)
+## 케이스 B — publish / consume (pika) [검증됨: AMQPS 5671 로 5건 발행→5건 소비, 큐 depth 0]
 
 `producer.py`·`consumer.py` (pika, amqps TLS 5671).
 
