@@ -40,7 +40,12 @@ addons:
   - name: vpc-cni
     version: latest
     resolveConflicts: overwrite
-    # NetworkPolicy 를 쓸 거면 켠다 (../netpol/ 참조)
+    # ★ NetworkPolicy 를 쓸 거면 **여기서** 켜라(../netpol/ 참조).
+    #   나중에 `aws eks update-addon` 으로 켜려다 CNI 를 통째로 죽인 적이 있다(실검증) —
+    #   update-addon 에 --service-account-role-arn 을 같이 주지 않으면 aws-node 의
+    #   IRSA 어노테이션이 지워져서 노드 인스턴스 role 로 폴백하고,
+    #   `ec2:DescribeNetworkInterfaces` 403 → ipamd init 실패 → aws-node CrashLoopBackOff.
+    #   그 상태에서는 새 파드가 IP 를 못 받아 클러스터가 사실상 마비된다.
     # configurationValues: '{"enableNetworkPolicy":"true"}'
   - name: coredns
     version: latest

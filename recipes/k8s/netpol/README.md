@@ -101,3 +101,43 @@ kubectl -n kube-system logs ds/aws-node -c aws-network-policy-agent --tail=50
 - **kube-system 을 차단하면** DNS·CNI·kubelet 통신이 깨진다. 네임스페이스 전역 정책을 만들 때 제외하라.
 - **ALB target-type: ip** 는 ALB 가 파드에 직접 연결한다. 인그레스를 잠그면 ALB 트래픽도 막힌다 — VPC CIDR 을 `ipBlock` 으로 허용해야 한다.
 - 채점이 임시 파드를 띄워 curl 하는 항목이 있으면, 그 파드가 정책에 막혀 실패할 수 있다.
+
+## ★ 실검증 (EKS 1.35 + VPC CNI NetworkPolicy, 2026-08-22)
+
+VPC CNI 의 NetworkPolicy 를 켜고 실제 차단/허용을 확인했다.
+
+| 단계 | 결과 |
+|---|---|
+| 정책 없음 | `wget app-svc:8080/health` → **ok** |
+| `default-deny-ingress.yaml` 적용 | **download timed out** (차단) |
+| `allow-from-namespace.yaml` 적용 + 호출측에 `app=frontend` 라벨 | **ok** (허용) |
+| 라벨 제거 | **timed out** (다시 차단) |
+
+- 정책 반영에 **10~20초** 걸린다. 적용 직후 바로 테스트하면 아직 안 막힌 것처럼 보인다.
+- EKS 기본 VPC CNI 는 **NetworkPolicy 를 강제하지 않는다.** 켜야 한다:
+  `aws-node` DaemonSet 에 **`aws-eks-nodeagent`** 컨테이너가 생겼는지로 확인한다.
+  ```bash
+  kubectl -n kube-system get ds aws-node -o jsonpath='{.spec.template.spec.containers[*].name}'
+  # aws-node aws-eks-nodeagent   ← nodeagent 가 있어야 정책이 먹는다
+  ```
+
+## ★★ NetworkPolicy 켜다가 클러스터를 죽인 실화
+
+`aws eks update-addon --addon-name vpc-cni --configuration-values '{"enableNetworkPolicy":"true"}' --resolve-conflicts OVERWRITE`
+를 **`--service-account-role-arn` 없이** 실행했더니:
+
+1. `aws-node` ServiceAccount 의 `eks.amazonaws.com/role-arn` 어노테이션이 **지워졌다**
+2. aws-node 가 IRSA 대신 **노드 인스턴스 role 로 폴백** (그 role 엔 CNI 권한이 없다)
+3. `ipamd init: failed to retrieve attached ENIs info: UnauthorizedOperation …
+   is not authorized to perform: ec2:DescribeNetworkInterfaces` → **CrashLoopBackOff**
+4. 그 노드에서 새 파드가 IP 를 못 받는다. 애드온은 `UPDATING` 에서 멈춰 자가복구도 안 된다.
+
+기존 aws-node 파드는 안 죽어서 **당장은 멀쩡해 보인다** — 노드가 재생성되거나 파드가 재시작되는 순간 터진다.
+
+**예방**: 클러스터 만들 때 `cluster.yaml` 의 vpc-cni `configurationValues` 로 켠다.
+**복구**:
+```bash
+RA=$(aws eks describe-addon --cluster-name <cl> --addon-name vpc-cni --query addon.serviceAccountRoleArn --output text)
+kubectl -n kube-system annotate sa aws-node eks.amazonaws.com/role-arn="$RA" --overwrite
+kubectl -n kube-system delete pod -l k8s-app=aws-node      # 재시작하면 3/3 로 돌아온다
+```
