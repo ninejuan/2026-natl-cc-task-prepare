@@ -13,7 +13,8 @@ kubectl apply -f vap-disallow-latest-tag.yaml
 kubectl apply -f vap-disallow-latest-tag-binding.yaml
 kubectl apply -f vap-require-label.yaml
 kubectl apply -f vap-require-label-binding.yaml
-kubectl apply -f vap-allowed-registry.yaml + vap-allowed-registry-binding.yaml     # 바인딩은 필요에 맞게 작성
+kubectl apply -f vap-allowed-registry.yaml
+kubectl apply -f vap-allowed-registry-binding.yaml   # ★ 바인딩 없으면 정책이 무동작
 ```
 
 네임스페이스 셀렉터를 쓰므로 대상 네임스페이스에 label 이 있어야 한다. `kubernetes.io/metadata.name` 은 k8s 가 자동으로 붙인다.
