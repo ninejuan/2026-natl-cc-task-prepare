@@ -11,7 +11,8 @@ metadata:
   region: ap-northeast-2
   version: "1.35"
   tags:
-    Name: skills-eks
+    # ★ Name 태그를 여기 넣지 마라 — eksctl 이 자동으로 붙이므로 컨트롤플레인 생성이
+    #   `Duplicate key(s) in resource tags: [Name]` 로 실패한다(실검증). 노드그룹 tags 는 괜찮다.
     karpenter.sh/discovery: skills-eks   # Karpenter 를 나중에 붙일 때 서브넷/SG 발견용
 
 iam:
