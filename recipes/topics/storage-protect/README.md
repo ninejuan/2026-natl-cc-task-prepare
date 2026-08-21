@@ -33,7 +33,7 @@ aws s3api get-bucket-policy --bucket lab-protect --query Policy --output text | 
 
 ## 함정
 
-- **Macie 는 계정 단위 활성화** — `enable-macie` 선행. 이미 켜져 있으면 재사용(끄지 말 것). ⚠️ 활성화하면 계정 단위 과금(최소요금+GB) → 준비 계정에선 실행 안 함(현재 미활성 확인). 현장에선 활성화 후 job 실행.
+- **Macie 는 계정 단위 활성화** — `enable-macie` 선행. 이미 켜져 있으면 재사용(끄지 말 것). ⚠️ 활성화하면 계정 단위 과금(최소요금+GB). 실검증에선 활성화→job 실행→finding 확인 후 **원래대로 disable 복원**했다(원래 미활성 계정이었음). 현장 계정에서 이미 켜져 있으면 그대로 쓰고 끄지 마라.
 - **Macie job 은 시간이 걸린다** — 소량이라도 수 분. 채점 3분 제약이면 **미리 실행해 결과 보유** 상태로.
 - **Access Point 이름은 계정+리전 유니크**, ARN 을 버킷처럼 사용(`--bucket <ap-arn>`).
 - **VPC 전용 AP**: `--vpc-configuration VpcId=...` → NetworkOrigin=VPC. 그 VPC 밖에선 접근 불가.
