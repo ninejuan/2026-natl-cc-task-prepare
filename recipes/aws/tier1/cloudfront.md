@@ -65,7 +65,7 @@ aws s3api put-bucket-policy --bucket $BUCKET --policy file://bp.json
 - **`S3OriginConfig.OriginAccessIdentity` 는 빈 문자열** + `OriginAccessControlId` 를 준다(OAC 방식). OAI 를 쓰면 구식.
 - **검증**: `curl https://$DOMAIN/` → 200 + 내용 / `curl https://$BUCKET.s3...` → **403**(직접 차단).
 
-## 케이스 B — 커스텀 오리진 (ALB) + VPC Origin
+## 케이스 B — 커스텀 오리진 (ALB) + VPC Origin [검증됨: S3 website 엔드포인트를 CustomOriginConfig(http-only)로 → 200]
 
 ```bash
 # 커스텀 오리진(ALB, public)
@@ -125,7 +125,7 @@ aws cloudfront publish-function --name lab-viewer-fn --if-match "$ETAG"
 ```
 Functions 로 안 되는(외부 호출·무거운 처리) 경우만. us-east-1 + 버전 ARN 이 핵심 제약.
 
-## 케이스 F — 캐시 무효화 / 커스텀 에러페이지
+## 케이스 F — 캐시 무효화 / 커스텀 에러페이지 [검증됨: 404→커스텀 페이지, 무효화 전 v1→후 v2]
 
 ```bash
 aws cloudfront create-invalidation --distribution-id $DIST --paths "/*"   # 채점 전 캐시 클리어

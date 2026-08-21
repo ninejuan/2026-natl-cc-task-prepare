@@ -444,3 +444,32 @@ ALB(리스너 :80) + 타깃그룹 2개(blue/green) + `deploymentController=CODE_
 - **함정(실측)**: `aws deploy get-deployment --query 'deploymentInfo.[status,deploymentOverview]' --output text` 는
   overview 가 채워지는 순간 `'str' object has no attribute 'items'` 로 죽는다(스칼라+dict 혼합 multiselect + text 출력).
   → `--output json` 이나 `--query deploymentInfo.status` 로 분리해서 조회할 것.
+
+## 4차 추가 — CloudFront 커스텀 오리진 / 에러페이지 / 무효화 (us-east-1 + CF)
+
+**케이스 B — 커스텀 오리진**: S3 **정적 웹사이트 엔드포인트**(`*.s3-website-<region>.amazonaws.com`)를 오리진으로.
+```json
+"CustomOriginConfig": {"HTTPPort":80,"HTTPSPort":443,"OriginProtocolPolicy":"http-only",
+                       "OriginSslProtocols":{"Quantity":1,"Items":["TLSv1.2"]}}
+```
+→ `curl https://<dom>/` = `200`, `origin-v1`.
+- **★ S3 website 엔드포인트는 `S3OriginConfig` 가 아니라 `CustomOriginConfig` 다**(website 엔드포인트는 HTTP만, HTTPS 미지원 → `http-only`).
+  OAC 를 쓰는 REST 엔드포인트(`*.s3.<region>.amazonaws.com`)와 완전히 다른 설정이다. 여기서 자주 틀린다.
+- `list-vpc-origins` API 는 이 계정/CLI 에서 사용 가능(현재 0개) — ALB/NLB 를 퍼블릭 노출 없이 오리진으로 쓰는 신기능.
+
+**케이스 F — 커스텀 에러페이지**
+```
+GET /does-not-exist → HTTP/2 404, <h1>custom 404</h1>, x-cache: Error from cloudfront
+CustomErrorResponses: 403→404 /error404.html (TTL 10), 404→404 /error404.html (TTL 10)
+```
+- **403 도 같이 매핑해야** 한다 — S3 오리진은 없는 키에 403 을 주는 경우가 많다.
+
+**케이스 F — 캐시 무효화 (가이드의 "채점 시 캐시 영향 제거")**
+```
+1) 2회 호출 → x-cache: Hit from cloudfront   (캐시 채워짐)
+2) 원본만 v2 로 교체 → 무효화 전 응답: origin-v1   ← 캐시가 계속 옛 내용을 준다
+3) create-invalidation /index.html → Status: Completed
+4) 무효화 후 응답: origin-v2                        ← 즉시 반영
+5) 전체 무효화 '/*' 도 수락(InProgress)
+```
+→ **원본만 바꾸고 무효화를 안 하면 채점자가 옛 내용을 본다.** 배포 후 반드시 `create-invalidation`.
