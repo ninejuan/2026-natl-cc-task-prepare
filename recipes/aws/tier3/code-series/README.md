@@ -65,7 +65,7 @@ aws ecr describe-images --region $R --repository-name lab-cb-app --query 'imageD
 - **build**: CodeBuild + `buildspec-ecs-deploy.yml`.
 - **deploy**: ECS(롤링) 또는 CodeDeploy(blue/green).
 
-## 케이스 C — CodeDeploy
+## 케이스 C — CodeDeploy [검증됨: ECS blue/green — 배포 Succeeded, 리스너 blue→green 스왑, 응답 v1→v2]
 
 ```bash
 # EC2/온프렘: in-place 또는 blue/green (appspec.yml + 배포 그룹)

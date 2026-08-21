@@ -426,3 +426,21 @@ endpointConfiguration.types → REGIONAL
   `BadRequestException: Broker engine type [RabbitMQ] does not support host instance type [mq.t3.micro]`.
   `describe-broker-instance-options --engine-type RABBITMQ` 로 확인한 최소 사양은 **`mq.m7g.medium` / `mq.m5.large`**
   (ap-northeast-2 도 동일). ActiveMQ 는 `mq.t3.micro` 가능.
+
+## 4차 추가 — CodeDeploy ECS blue/green (ap-south-1)
+
+ALB(리스너 :80) + 타깃그룹 2개(blue/green) + `deploymentController=CODE_DEPLOY` ECS 서비스로 실제 배포.
+
+| 시점 | 관찰 |
+|---|---|
+| 배포 전 | `curl http://<alb>/index.html` → **`v1`**, 리스너 → `lab-tg2-blue` |
+| 배포(v2 taskdef, AppSpecContent) | `deploymentInfo.status` = **`Succeeded`** (`Succeeded:1, Failed:0`) |
+| 배포 후 | `curl` → **`v2`**, 리스너 `ForwardConfig.TargetGroups` → **`lab-tg2-green`**, 서비스 taskdef `lab-cd2:2` |
+
+- **blue/green 의 실체는 "리스너의 타깃그룹 교체"** 다. ECS 롤링(`--task-definition` 갱신)과 달리 **구/신 태스크가 동시에 존재**하다가 리스너가 통째로 넘어간다.
+- `deploymentStyle` = `BLUE_GREEN` + `WITH_TRAFFIC_CONTROL`, `loadBalancerInfo.targetGroupPairInfoList` 에 **TG 2개 + prod 리스너 ARN** 필수.
+- 서비스는 **생성 시점에** `--deployment-controller type=CODE_DEPLOY` 여야 한다. 나중에 못 바꾼다.
+- 배포 role 은 `AWSCodeDeployRoleForECS`.
+- **함정(실측)**: `aws deploy get-deployment --query 'deploymentInfo.[status,deploymentOverview]' --output text` 는
+  overview 가 채워지는 순간 `'str' object has no attribute 'items'` 로 죽는다(스칼라+dict 혼합 multiselect + text 출력).
+  → `--output json` 이나 `--query deploymentInfo.status` 로 분리해서 조회할 것.
