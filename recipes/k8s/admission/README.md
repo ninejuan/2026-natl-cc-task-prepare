@@ -13,7 +13,7 @@ kubectl apply -f vap-disallow-latest-tag.yaml
 kubectl apply -f vap-disallow-latest-tag-binding.yaml
 kubectl apply -f vap-require-label.yaml
 kubectl apply -f vap-require-label-binding.yaml
-kubectl apply -f vap-allowed-registry.yaml     # 바인딩은 필요에 맞게 작성
+kubectl apply -f vap-allowed-registry.yaml + vap-allowed-registry-binding.yaml     # 바인딩은 필요에 맞게 작성
 ```
 
 네임스페이스 셀렉터를 쓰므로 대상 네임스페이스에 label 이 있어야 한다. `kubernetes.io/metadata.name` 은 k8s 가 자동으로 붙인다.
@@ -29,7 +29,7 @@ kubectl get ns prod -o jsonpath='{.metadata.labels}'; echo   # metadata.name=pro
 |---|---|
 | `vap-disallow-latest-tag.yaml` + `-binding.yaml` | `:latest` 및 태그 없는 이미지 차단 |
 | `vap-require-label.yaml` + `-binding.yaml` | 특정 label 존재 + 값까지 강제 |
-| `vap-allowed-registry.yaml` | 허용 ECR 레지스트리만 |
+| `vap-allowed-registry.yaml` + `-binding.yaml` | 허용 ECR 레지스트리만 |
 
 ## 자가검증 — 채점이 하는 방식 그대로
 
@@ -100,3 +100,27 @@ oldObject != null                                           UPDATE 인지 CREATE
 - **`failurePolicy: Fail` + 평가 오류** = 클러스터 전체 파드 생성 불가. `has()` 로 방어하라. 사고가 나면 바인딩을 지우면 즉시 풀린다.
 - **Deployment 로 만든 파드도 막힌다.** 이때 Deployment 는 성공하고 ReplicaSet 이벤트에 에러가 남는다. `kubectl describe rs` 로 봐야 이유가 보인다.
 - 네임스페이스 라벨 셀렉터를 쓰면 **대상 네임스페이스가 없을 때 정책이 조용히 무효**다.
+
+## ★ 실검증 (kind v1.36.1, 2026-08-22)
+
+정책 3개 + 바인딩 3개를 실제로 적용해 **강제 동작**까지 확인했다.
+
+| 요청 | 결과 |
+|---|---|
+| `prod` 에 `nginx:latest` | ❌ `denied … 이미지에 명시적 태그가 있어야 하고 ':latest' 는 허용되지 않습니다` |
+| `prod` 에 태그 없는 `nginx` | ❌ 위와 동일(`:` 미포함도 걸린다) |
+| `prod` 에 `nginx:1.27` (라벨 없음) | ❌ `require-env-label` 이 거부 |
+| `prod` 에 외부 레지스트리 이미지 | ❌ `allowed-registry` 가 거부 |
+| `prod` 에 ECR 이미지 + `skills.kr/env` 라벨 | ✅ 생성됨 |
+| `app`(셀렉터 불일치 ns) 에 `nginx:latest` | ✅ 생성됨 — 바인딩의 `namespaceSelector` 가 정상 작동 |
+
+### ★ 놓치기 쉬운 것 — 정책과 바인딩은 반드시 짝
+`allowed-registry` 는 원래 바인딩 파일이 없어서 **적용해도 아무것도 막지 않았다**.
+`kubectl get validatingadmissionpolicy` 에는 멀쩡히 보이기 때문에 원인을 찾기 어렵다.
+→ `vap-allowed-registry-binding.yaml` 을 추가했다. 정책을 만들면 바인딩도 반드시 같이 만든다.
+
+```bash
+# 짝이 맞는지 한 번에 확인
+kubectl get validatingadmissionpolicybinding \
+  -o jsonpath='{range .items[*]}{.spec.policyName} <- {.metadata.name}{"\n"}{end}'
+```
