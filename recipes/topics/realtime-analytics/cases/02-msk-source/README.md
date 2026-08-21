@@ -35,4 +35,4 @@
   VPC 에 넣으면 Glue/S3/Maven 접근을 위해 NAT 또는 VPC 엔드포인트가 필요하다.
 - Studio 실행 role 에 `kafka-cluster:Connect/DescribeTopic/ReadData` + `kafka:DescribeCluster` 필요.
 - `scan.startup.mode`: `latest-offset`(기본) / `earliest-offset` / `group-offsets`. 미리 넣어둔 메시지를 보려면 earliest.
-- MSK 토픽은 **미리 만들어져 있어야** 한다(Flink 가 자동 생성하지 않는다). `../../msk/` 의 admin.py 참고.
+- MSK 토픽은 **미리 만들어져 있어야** 한다(Flink 가 자동 생성하지 않는다). `../../../msk/` 의 admin.py 참고.

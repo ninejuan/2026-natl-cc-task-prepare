@@ -1,7 +1,7 @@
 # OIDC → IAM Role (Keycloak) — ★ 실검증 중 발견한 결정적 제약
 
 Keycloak 을 **OIDC** provider 로 등록해 `sts:AssumeRoleWithWebIdentity` 로 임시자격을 받는 방식.
-기반: `../../../aws/tier3/iam-federation.md`. 실행 스크립트: `../../verify-aws-side.sh`.
+기반: `../../../../aws/tier3/iam-federation.md`. 실행 스크립트: `../../verify-aws-side.sh`.
 
 ```bash
 aws iam create-open-id-connect-provider \
@@ -36,4 +36,4 @@ AWS 가 **issuer 의 `/.well-known/openid-configuration` 을 실제로 가져가
 - 조건 키에 `https://` 를 넣으면 **절대 매칭되지 않는다**(에러도 안 난다). `keycloak.example.com/realms/aws:aud` 형태.
 - `client-id-list` = OIDC `aud`. Keycloak 클라이언트 ID 와 정확히 같아야 한다.
 - 지문(thumbprint)은 IdP TLS 체인의 **최상위 중간 CA** SHA1. 인증서 갱신으로 CA 가 바뀌면 갱신 필요(`update-open-id-connect-provider-thumbprint`).
-- GitHub Actions OIDC 와 완전히 같은 메커니즘이다 — `../../cicd/cases/03-oidc/`(live 검증) 참고.
+- GitHub Actions OIDC 와 완전히 같은 메커니즘이다 — `../../../cicd/cases/03-oidc/`(live 검증) 참고.

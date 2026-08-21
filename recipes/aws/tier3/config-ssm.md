@@ -8,7 +8,7 @@ export R=ap-northeast-2
 ```
 
 **governance/event handling 은 3년 연속 출제.** "SG/EC2 에 위반 변경 → 감지 → 알림/복구". 두 경로:
-- **EventBridge + Lambda**(빠름, 권장) → `../../serverless/eventbridge.md` 케이스 A + `lambda`. CloudTrail 이벤트로 즉시 반응.
+- **EventBridge + Lambda**(빠름, 권장) → `../serverless/eventbridge.md` 케이스 A + `lambda`. CloudTrail 이벤트로 즉시 반응.
 - **Config rule + remediation**(느림, recorder 셋업 필요) → 아래 케이스 C.
 
 ---
@@ -37,7 +37,7 @@ aws ssm get-parameters-by-path --region $R --path /lab/app --recursive --with-de
 ```
 CloudTrail(SG 변경 API) → EventBridge rule → Lambda(위반 규칙 되돌림) → SNS 알림
 ```
-- EventBridge rule: `../../serverless/eventbridge.md` 케이스 A (eventName: AuthorizeSecurityGroupIngress).
+- EventBridge rule: `../serverless/eventbridge.md` 케이스 A (eventName: AuthorizeSecurityGroupIngress).
 - Lambda: 이벤트에서 groupId 추출 → `revoke-security-group-ingress` → SNS publish.
 - **CloudTrail 이 켜져 있어야** API Call 이벤트가 온다(전제).
 

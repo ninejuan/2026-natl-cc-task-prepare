@@ -1,7 +1,7 @@
 # Keycloak 그룹 → AWS IAM Role 매핑 (SAML)
 
 Keycloak 그룹 소속에 따라 다른 IAM Role 로 로그인. 2024 원형(admin→admin-access, dev→poweruser-access)의 그룹 기반 버전.
-★ Keycloak 서버 검증은 사용자 cncf/k8s 패스에서(`../../../cncf/keycloak/`). 여기선 AWS↔Keycloak 매핑 규칙.
+★ Keycloak 서버 검증은 사용자 cncf/k8s 패스에서(`../../../../cncf/keycloak/`). 여기선 AWS↔Keycloak 매핑 규칙.
 
 ## SAML assertion 의 Role attribute
 
@@ -25,7 +25,7 @@ aws iam create-saml-provider --name keycloak --saml-metadata-document file://met
 #   aws-admins   → admin-access (AdministratorAccess)
 #   aws-developers → poweruser-access (PowerUserAccess)
 ```
-trust policy 는 `../../../aws/tier3/iam/policy-documents.md` 의 SAML 예시(실검증). SAML:aud 조건 필수.
+trust policy 는 `../../../../aws/tier3/iam/policy-documents.md` 의 SAML 예시(실검증). SAML:aud 조건 필수.
 
 ## 검증 (브라우저)
 

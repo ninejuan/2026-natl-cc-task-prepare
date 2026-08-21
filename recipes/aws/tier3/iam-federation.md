@@ -47,7 +47,7 @@ aws sts assume-role --role-arn "$RARN" --role-session-name audit --query x 2>&1 
 
 ## ★ 케이스 B — SAML (Keycloak → AWS 콘솔) [검증됨: SAML provider + role×2 + SAML:aud trust]
 
-Keycloak 상세는 `../../../cncf/keycloak/`(realm import + setup-aws-saml.sh 로 검증됨). AWS 쪽만:
+Keycloak 상세는 `../../cncf/keycloak/`(realm import + setup-aws-saml.sh 로 검증됨). AWS 쪽만:
 
 ```bash
 # 1) Keycloak IdP metadata 로 SAML Provider 등록

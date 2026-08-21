@@ -49,7 +49,7 @@ aws sqs receive-message --region $R --queue-url "$FIFO" --max-number-of-messages
 
 ## SQS 케이스 C — Lambda 소비 (ESM) [검증됨: 부분배치 실패 포함]
 
-`../lambda.md` 케이스 E 참조. 큐 → Lambda 자동 트리거.
+`lambda.md` 케이스 E 참조. 큐 → Lambda 자동 트리거.
 
 ## SNS 케이스 D — fan-out + filter policy [검증됨: topics/message-queue 04 — 2큐 각 1건]
 

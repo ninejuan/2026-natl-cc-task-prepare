@@ -73,4 +73,4 @@ repository = ninejuan/lab-gha
 - `aud=sts.amazonaws.com` 은 `configure-aws-credentials` 기본값.
 - 브랜치를 안 가리려면 `…:*`, PR 도 허용하려면 `repo:OWNER*/REPO*:pull_request`.
 - 지문(thumbprint)은 넣되, AWS 는 잘 알려진 IdP 에 대해 자체 신뢰 저장소를 쓴다 — 지문 불일치가 원인인 경우는 드물다.
-- Keycloak OIDC 도 **완전히 같은 메커니즘**이다 — `../../keycloak-sso/cases/02-oidc/` 참고(단, 사설 issuer 는 provider 생성 자체가 안 된다).
+- Keycloak OIDC 도 **완전히 같은 메커니즘**이다 — `../../../keycloak-sso/cases/02-oidc/` 참고(단, 사설 issuer 는 provider 생성 자체가 안 된다).

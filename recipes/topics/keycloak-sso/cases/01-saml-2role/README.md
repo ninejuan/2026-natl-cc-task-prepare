@@ -2,7 +2,7 @@
 
 admin → 강한 role, dev → 약한 role. Keycloak 유저의 `Role` attribute 가 `<role-arn>,<provider-arn>`.
 실행 스크립트: `../../verify-aws-side.sh`(SAML provider + role×2 생성→조회→삭제).
-Keycloak 서버 자체는 사용자 k8s/cncf 패스(`../../../cncf/keycloak/`).
+Keycloak 서버 자체는 사용자 k8s/cncf 패스(`../../../../cncf/keycloak/`).
 
 ## AWS 쪽 (live 실측)
 

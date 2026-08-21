@@ -89,7 +89,7 @@ aws athena get-query-execution --region $R --query-execution-id $QID \
 
 ## Terraform [검증됨: pipeline TF 로 workgroup/DB → click 5 쿼리]
 
-`../terraform-pipeline/main.tf` 에 workgroup + Glue DB 포함(검증). 테이블은 DDL 을 `null_resource`+로컬 exec 보다 **콘솔/CLI 로 CREATE** 하는 게 낫다(projection 문자열 이스케이프 회피). workgroup 만 TF 로:
+`terraform-pipeline/main.tf` 에 workgroup + Glue DB 포함(검증). 테이블은 DDL 을 `null_resource`+로컬 exec 보다 **콘솔/CLI 로 CREATE** 하는 게 낫다(projection 문자열 이스케이프 회피). workgroup 만 TF 로:
 
 ```hcl
 resource "aws_athena_workgroup" "wg" {

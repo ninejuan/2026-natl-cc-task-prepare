@@ -26,7 +26,7 @@ S3 (수집)  →  Lambda s3-event 핸들러 (처리)  →  DynamoDB (저장)
 
 - 수집: S3 이벤트 알림 또는 EventBridge S3 이벤트 → `lambda/s3-event/`
 - 처리: Lambda, 또는 Lambda 없이 SFN + SDK 직접통합
-- 저장: DynamoDB (`../data/dynamodb` 참조 예정)
+- 저장: DynamoDB (`../tier2/dynamodb.md` 참조 예정)
 - 오케스트레이션: `stepfunctions/inventory-ddb.asl.json` 패턴
 
 ## "컴퓨팅 서비스 사용 불가" 제약 (2025 inventory 형)
