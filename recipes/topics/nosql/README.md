@@ -19,7 +19,7 @@
 | 02 | DAX (마이크로초 캐시) | DDB + DAX | `cases/02-dax/` live ✓ (dax.t3.small available+엔드포인트) |
 | 03 | Global Table (멀티리전 복제) | DDB | `cases/03-global-table/` live ✓ (euw1↔euc1 put/get 왕복) |
 | 04 | DocumentDB (MongoDB 호환) | DocumentDB | `cases/04-documentdb/` live ✓ (docdb 5.0 available+엔드포인트) |
-| 05 | boto3 CRUD 앱(배포파일 형) | DDB | `cases/05-crud-app/crud.py` |
+| 05 | boto3 CRUD 앱(배포파일 형) | DDB | `cases/05-crud-app/crud.py` ✅ live(CRUD 왕복) |
 
 ## 서비스 선택
 

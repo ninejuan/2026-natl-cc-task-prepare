@@ -17,9 +17,9 @@
 |---|---|---|---|
 | 01 | `cases/01-fifo/` | FIFO 순서 보장 + 콘텐츠 중복제거 | ✅ live |
 | 02 | `cases/02-dlq-redrive/` | DLQ + redrive(재처리) | ✅ live (maxReceiveCount=2 초과→DLQ 이동 실측) |
-| 03 | `cases/03-partial-batch/` | ReportBatchItemFailures(부분 실패) | ✅ 핸들러 |
-| 04 | `cases/04-fanout/` | SNS→여러 SQS 팬아웃 | 기반 카드 |
-| 05 | `cases/05-pipes/` | EventBridge Pipes(SQS→타깃) | 스크립트 |
+| 03 | `cases/03-partial-batch/` | ReportBatchItemFailures(부분 실패) | ✅ 핸들러 unit test(m2만 재처리) |
+| 04 | `cases/04-fanout/` | SNS→여러 SQS 팬아웃 | ✅ live(2큐 각 1건 수신) |
+| 05 | `cases/05-pipes/` | EventBridge Pipes(SQS→타깃) | ✅ live(pipe RUNNING) |
 
 ## Spike 완충 패턴 (가이드의 "Spike 트래픽 분산")
 

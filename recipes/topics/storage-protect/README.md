@@ -15,9 +15,9 @@
 
 | # | 케이스 | 핵심 | 검증 |
 |---|---|---|---|
-| 01 | `cases/01-macie/` | Macie 로 PII 자동 탐지 job | 스크립트(미실행: 계정단위 과금) |
+| 01 | `cases/01-macie/` | Macie 로 PII 자동 탐지 job | ✅ live(job COMPLETE→High finding: FINANCIAL+PERSONAL, 검증후 disable 원복) |
 | 02 | `cases/02-access-point/` | Access Point(VPC 전용/prefix 격리) | ✅ live(AP+prefix 정책) |
-| 03 | `cases/03-encryption-enforce/` | SSE-KMS 강제 + 정책 | 기반 카드 |
+| 03 | `cases/03-encryption-enforce/` | SSE-KMS 강제 + 정책 | ✅ live(무암호화 거부/KMS 허용) |
 
 ## 검증 (채점자 문체)
 

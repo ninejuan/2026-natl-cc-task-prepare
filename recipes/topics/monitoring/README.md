@@ -16,7 +16,7 @@
 | # | 케이스 | 핵심 | 기반 | 상태 |
 |---|---|---|---|---|
 | 01 | 대시보드(ECS/ALB 메트릭) | put-dashboard, ALB RequestCount·TargetResponseTime·5xx | tier3 ✓ | ✅ 실검증 `cases/01-dashboard-alarm/verify.sh` |
-| 02 | 알람 + SNS | put-metric-alarm, treat-missing-data | `cases/02-alarm-sns/` | ✅ (01 verify.sh 포함) |
+| 02 | 알람 + SNS | put-metric-alarm, treat-missing-data | `cases/02-alarm-sns/` | ✅ live(ALARM 전이+SNS action) |
 | 03 | 이상 탐지 알람 | ANOMALY_DETECTION_BAND | `cases/03-anomaly/` | ✅ live(ThresholdMetricId=ad1) |
 | 04 | Container Insights | ECS 클러스터 CPU/메모리 자동 메트릭 | `cases/04-container-insights/` | ✅ live(enabled 확인) |
 | 05 | composite alarm | 여러 알람 AND/OR | `cases/05-composite/` | ✅ live(a1 OR a2) |
