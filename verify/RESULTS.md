@@ -356,3 +356,49 @@ aud        = sts.amazonaws.com
 - GitHub `ninejuan/lab-gha`(private) 도 **삭제 완료**(`gh repo delete`). 검증 산출물은
   `recipes/topics/cicd/cases/01-gha-ecs/`(deploy.yml·render_td.py·Dockerfile·app.py·teardown.sh)에 남겼다.
   → **AWS·GitHub 양쪽 모두 잔재 0.**
+
+---
+
+# 2026-08-21 4차 — recipes/aws 공백 케이스 라이브 검증 (진행 중 기록)
+
+## 확인 완료
+
+| 카드/케이스 | 리전 | 결과 |
+|---|---|---|
+| `iam/policy-documents.md` trust 4종 | 글로벌 | ✅ EC2/ExternalId/MFA/ECS trust 전부 `create-role` 통과 |
+| 〃 permission 3종 | 〃 | ✅ Access Analyzer `validate-policy` — `p-s3`/`p-boundary` 클린, `p-cond` 는 `SECURITY_WARNING PASS_ROLE_WITH_STAR_IN_RESOURCE` |
+| 〃 permission boundary | 〃 | ✅ `put-role-permissions-boundary` → `PermissionsBoundaryType: Policy` 확인 |
+| `dynamodb.md` F resource policy | us-east-2 | ✅ `put-resource-policy` RevisionId 반환 |
+| `lambda.md` F layer/VPC/동시성 | us-east-2 | ✅ layer 코드 실제 실행(`"hello skills from layer"`), VPC 부착, 예약동시성 5, 프로비저닝 동시성 v1 |
+| `eventbridge.md` D custom bus | us-east-2 | ✅ 전용 버스 + rule → CW Logs 3건 도착(전체 envelope 확인) |
+| 〃 archive/replay | 〃 | ✅ archive EventCount 0→**3**(90초 뒤), replay `COMPLETED` + `EventLastReplayedTime` 기록 |
+| `cloudwatch.md` E EMF | us-east-2 | ✅ 로그 3줄 → `LabEMF` 네임스페이스에 `OrderCount`/`Latency` 생성, **Sum=21, Max=7** |
+| `s3.md` E 이벤트 알림 | us-west-1 | ✅ prefix `inbox/` + suffix `.json` 필터 정확 동작(`inbox/x.json` 만 수신, `other/y.txt` 무시) |
+| 〃 E 교차리전 복제 | us-west-1→us-west-2 | ✅ `ReplicationStatus PENDING→COMPLETED`, 대상에 `REPLICA` 도착 |
+| 〃 E Object Lock | us-west-1 | ✅ GOVERNANCE 1일, 삭제 시 `AccessDenied because object protected by object lock`, `--bypass-governance-retention` 로는 삭제 |
+| `ecr.md` D pull-through cache | us-west-1 | ✅ 룰 생성 → `docker pull` 로 `labpub/docker/library/busybox` **repo 자동 생성 + 캐시** |
+| `acm.md` A DNS 검증 | us-east-1 | ✅ `PENDING_VALIDATION` + 검증 CNAME(`_xxx.lab-skills.dev` → `_yyy.acm-validations.aws`) |
+| 〃 B 와일드카드/SAN | us-west-1 | ✅ `*.lab-skills.dev` + SAN 2개, 도메인별 검증상태 조회 |
+| `route53/record-sets.md` | ca-central-1 | ✅ A/AAAA/CNAME/MX/TXT/SRV/CAA + weighted·latency·failover(헬스체크)·geo·multivalue 전종 UPSERT |
+| `route53.md` B NS 하위 위임 | 〃 | ✅ 부모 존에 `dig +norecurse` → AUTHORITY 에 자식 NS 4개(referral), 자식 NS 직접 조회 → `203.0.113.7` |
+| 〃 F PHZ 없이 split-view | 〃 | ✅ 퍼블릭 존이 사설 IP `10.92.1.99` 반환 |
+| 〃 E Resolver | 〃 | ✅ inbound(IP 2개 ATTACHED) + outbound `OPERATIONAL`, FORWARD 룰 `onprem.local` + VPC 연결 `COMPLETE` |
+| `kinesis.md` A Data Streams | 〃 | ✅ put-records 10건 → get-records 10건 그대로 소비, 보존 24→48h |
+| `ecs.md` E ECS Exec | eu-central-1 | ✅ `execute-command` 로 컨테이너 내부 실행 — hostname/`uid=0(root)`/`42` |
+| `glue/` B ETL Job | ap-southeast-2 | ✅ Glue 4.0 job SUCCEEDED → `parquet/event_type=click|view/` 스노피 파케이 산출 |
+| `backup.md` B 온디맨드 백업 | eu-central-1 | ✅ backup job `COMPLETED`, 복구지점 생성 |
+
+## 이번에 새로 잡은 함정
+
+- **EventBridge 아카이브는 이벤트 반영이 늦다(실측 ~90초)** — 발행 직후 replay 하면 아카이브가 비어 있어
+  replay 가 `COMPLETED` 로 끝나도 **아무것도 재생되지 않는다**(`EventLastReplayedTime: None`). EventCount 를 먼저 확인할 것.
+- **S3 알림을 걸면 `s3:TestEvent` 가 먼저 한 건 들어온다** — 첫 `receive-message` 가 이걸 가져가므로
+  실제 객체 이벤트가 없다고 오해하기 쉽다. 큐를 끝까지 비우면서 확인할 것.
+- **`sqs set-queue-attributes --attributes Policy={json}` shorthand 는 또 실패한다** → `--attributes file://attrs.json`
+  (`{"Policy": "<정책 JSON 문자열>"}` 형태). 이번 세션에서 두 번째로 밟은 함정.
+- **`example.com` 으로는 ACM 인증서를 못 받는다**(IANA 예약) — `Status: FAILED`, 검증 레코드도 안 나온다. 실도메인/다른 도메인으로.
+- **예약 동시성은 `get-function-configuration` 에 안 나온다** — `ReservedConcurrentExecutions` 가 `null` 로 보인다. `get-function-concurrency` 를 써야 한다.
+- **Kinesis 스트림 변경 작업은 직렬화해야 한다** — `increase-stream-retention-period` 직후 `update-shard-count` 하면
+  `ResourceInUseException: … not ACTIVE, instead in state UPDATING`. ACTIVE 대기 후 다음 작업.
+- **DDB `put-resource-policy` 직후 `get-resource-policy` 는 `PolicyNotFoundException`** — 최종적 일관성. 재시도 필요.
+- ECS Exec 은 **task role** 에 `ssmmessages:*` 4종이 필요하고, `enableExecuteCommand` 는 run-task/서비스 쪽 플래그다.
