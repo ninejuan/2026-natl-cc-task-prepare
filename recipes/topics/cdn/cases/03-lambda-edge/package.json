@@ -1,0 +1,9 @@
+{
+  "name": "edge-resize",
+  "version": "1.0.0",
+  "main": "index.js",
+  "type": "commonjs",
+  "dependencies": {
+    "sharp": "^0.33.5"
+  }
+}

@@ -17,7 +17,7 @@
 |---|---|---|---|
 | 01 | S3 + OAC (정적 호스팅) | 오리진 보호 | ✅ 실검증 `cases/01-s3-oac/verify.sh` |
 | 02 | Function: 헤더 변경/리다이렉트/인증/SPA | viewer-request/response | ✅ `cases/02-functions/` (test-function 실검증, viewer-response 헤더는 01 배포서도 확인) |
-| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | `cases/03-lambda-edge/` — association·배포 실검증, python3.12 는 502(런타임 제약) → Node.js |
+| 03 | Lambda@Edge: 이미지 리사이징 | origin-response | ✅ **live E2E** `cases/03-lambda-edge/`(Node20+sharp, `?w=100`→100×75 PNG 실측. python3.12 는 502) |
 | 04 | behavior 경로 분기 | /api/* → 다른 origin | ✅ live(ordered behavior `/api/*` config 수락 + Deployed) |
 | 05 | origin failover | origin group 500/502 | ✅ live(OriginGroups FailoverCriteria 500/502 config 수락 + Deployed) |
 | 06 | signed URL/cookie | 콘텐츠 보호 | ✅ live(public key+key group 생성, signed URL 서명) |
@@ -62,7 +62,9 @@ aws cloudfront create-invalidation --distribution-id $DIST --paths '/*'
 - **배포 반영 ~2분**(실측, 최대 10분) — 변경 후 Deployed 대기.
 - **Function querystring 재할당은 키순서 못바꿈**(실측) — 정렬 no-op, 삭제로.
 - **Lambda@Edge 는 us-east-1 에 배포** + 버전 published(별칭 아님).
-- **★ Lambda@Edge 런타임 제약(실측)**: `python3.12` 로 만들어 origin-response 에 붙였더니 edge 에서 `502 LambdaValidationError`. Lambda@Edge 는 표준 Lambda 보다 지원 런타임이 뒤처진다 — **Node.js(nodejs18.x/20.x) 또는 검증된 Python 버전**을 쓸 것. 이미지 리사이징 예제는 Node.js 가 무난. association·배포 자체는 정상(config 수락, Deployed).
+- **★ Lambda@Edge 런타임 제약(실측)**: `python3.12` 로 만들어 origin-response 에 붙였더니 edge 에서 `502 LambdaValidationError`. **nodejs20.x + sharp 로는 리사이징까지 정상 동작 확인**(`?w=100`→100×75 PNG).
+- **★ Lambda@Edge 502 3종(실측·전부 해결)**: (1) **`X-Edge-*` 접두사 헤더 추가 금지** → "blacklisted header". (2) **응답 객체를 새로 만들어 반환 금지** → "read-only header" — 받은 `response` 를 수정해 반환. (3) **OAC 오리진 + `AllViewer` 오리진요청정책 → S3 403**(Host 헤더 전달로 SigV4 깨짐) → **`AllViewerExceptHostHeader`** 사용. 자세한 건 `cases/03-lambda-edge/README.md`.
+- **Lambda@Edge 는 환경변수 불가** — 버킷/리전은 `request.origin.s3.domainName` 파싱으로 얻는다.
 - **origin group failover**: `OriginGroups.FailoverCriteria.StatusCodes` 는 500/502/503/504 등 5xx 계열만. default behavior 의 TargetOriginId 를 origin group id 로 지정(실측 config 수락).
 - HTTPS 는 ACM(us-east-1) + custom domain.
 
