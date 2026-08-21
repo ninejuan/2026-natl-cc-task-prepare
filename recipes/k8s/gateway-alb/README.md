@@ -80,3 +80,44 @@ curl -s -o /dev/null -w '%{http_code}\n' "http://$GW/health"
 - **`apiVersion`**: core 리소스는 `gateway.networking.k8s.io/v1`, LBC 확장은 `gateway.k8s.aws/v1beta1`. 섞이기 쉽다.
 - **match 규칙은 위에서부터 평가**된다. 구체적인 규칙(메서드 지정)을 먼저, 포괄 규칙을 나중에 둔다.
 - 서브넷 태그 요구사항은 Ingress 와 동일하다 — `kubernetes.io/role/elb`.
+
+## ★ 실검증 (EKS 1.35 + LBC v3.5.0, 2026-08-22)
+
+`gatewayclass → loadbalancerconfiguration → gateway → httproute` 를 적용해 **실제 ALB 로 200 응답**까지 확인했다.
+
+| 확인 | 결과 |
+|---|---|
+| GatewayClass | `Accepted=True (Accepted)` |
+| Gateway | `Accepted=True / Programmed=True`, ALB ARN 채워짐 |
+| HTTPRoute | `Accepted=True / ResolvedRefs=True` |
+| ALB 타깃그룹 | `targetType=ip`, `HealthCheckPath=/health`, interval 10 |
+| `curl http://<gw-alb>/` | **200 / `app-v1`** |
+
+### ★★ TargetGroupConfiguration 이 없으면 ALB 가 절대 안 뜬다
+처음엔 Gateway 가 이렇게 멈췄다:
+```
+Gateway .status: Accepted=False  reason=Invalid  "Check Gateway Events for more information."
+                 Programmed=Unknown reason=Pending "Waiting for load balancer to be active."
+LBC 로그: TargetGroup port is empty. When using Instance targets,
+         your service must be of type 'NodePort' or 'LoadBalancer'
+```
+**Ingress 의 `alb.ingress.kubernetes.io/target-type: ip` 에 해당하는 자리가 Gateway API 에는 없고,
+LBC 의 기본값이 `instance` 다.** 백엔드가 ClusterIP Service 면 여기서 죽는다.
+
+Gateway 는 **ALB DNS 주소까지는 status 에 채워놓고** Programmed 만 Pending 이라
+"ALB 는 생긴 것 같은데 왜 안 되지"로 시간을 버리기 딱 좋다.
+
+→ `targetgroupconfiguration.yaml` 을 추가했다. Service 하나당 하나씩 만들고 `targetType: ip` 를 준다.
+   적용하자마자 `Accepted=True / Programmed=True` 로 넘어갔다.
+
+```bash
+# 막혔을 때 이 두 개를 먼저 본다
+kubectl -n app get gateway app-gw -o jsonpath='{range .status.conditions[*]}{.type}={.status} ({.reason}) {.message}{"\n"}{end}'
+kubectl -n kube-system logs deploy/aws-load-balancer-controller --tail=50 | grep -i error
+```
+
+### 그 외
+- `LoadBalancerConfiguration` 은 `gateway.k8s.aws/**v1**`(v1beta1 은 deprecated).
+  CRD 가 LBC 차트의 `crds/crds.yaml` 이 아니라 **`crds/gateway-crds.yaml`** 에 들어 있어 따로 설치해야 한다.
+- Gateway API 표준 CRD(`gateway.networking.k8s.io`)도 별도 설치 필요:
+  `kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.5.0/standard-install.yaml`
