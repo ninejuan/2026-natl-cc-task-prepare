@@ -2,7 +2,7 @@
 # cdn 03 — Lambda@Edge(Node.js + sharp) 이미지 리사이징 라이브 검증 (us-east-1 + CloudFront)
 set -x
 R=us-east-1
-A=156041424727
+A=$(aws sts get-caller-identity --query Account --output text)
 B=lab-edge-$A
 D="$(cd "$(dirname "$0")" && pwd)"; cd "$D"
 

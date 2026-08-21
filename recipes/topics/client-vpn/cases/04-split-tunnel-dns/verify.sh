@@ -2,7 +2,7 @@
 # client-vpn 03(SAML federated) + 04(split-tunnel + DNS/PHZ) 라이브 검증 (ap-southeast-1)
 set -x
 R=ap-southeast-1
-A=156041424727
+A=$(aws sts get-caller-identity --query Account --output text)
 D="$(cd "$(dirname "$0")" && pwd)"; cd "$D"
 rm -rf cvpn && mkdir cvpn && cd cvpn
 

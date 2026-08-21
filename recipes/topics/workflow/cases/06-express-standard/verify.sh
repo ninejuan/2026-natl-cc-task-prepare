@@ -2,7 +2,7 @@
 # workflow 06 — Express vs Standard 라이브 검증 (us-west-2)
 set -x
 R=us-west-2
-A=156041424727
+A=$(aws sts get-caller-identity --query Account --output text)
 cd "$(dirname "$0")"
 
 cat > sfn-trust.json <<'EOF'

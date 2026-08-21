@@ -3,7 +3,7 @@
 # 증명: 배치 3건 중 1건만 실패 → 성공 2건은 재처리 안 됨(로그 1회), 실패 1건만 재시도되어 DLQ 로.
 set -x
 R=eu-west-1
-A=156041424727
+A=$(aws sts get-caller-identity --query Account --output text)
 D="$(cd "$(dirname "$0")" && pwd)"
 SRC=/Users/juany/workspace/sunrint/skills/2026-skills/national/task-prepare/recipes/topics/message-queue/cases/03-partial-batch
 

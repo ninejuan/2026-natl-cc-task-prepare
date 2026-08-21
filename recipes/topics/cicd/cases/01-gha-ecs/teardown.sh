@@ -1,6 +1,6 @@
 #!/bin/bash
 set -x
-R=ap-northeast-1; A=156041424727
+R=ap-northeast-1; A=$(aws sts get-caller-identity --query Account --output text)
 D="$(cd "$(dirname "$0")" && pwd)"; cd "$D"; . ./gha.env
 aws ecs update-service --region $R --cluster lab-gha-cluster --service lab-gha-svc --desired-count 0 >/dev/null
 until [ "$(aws ecs describe-services --region $R --cluster lab-gha-cluster --services lab-gha-svc --query 'services[0].runningCount' --output text)" = "0" ]; do sleep 10; done
