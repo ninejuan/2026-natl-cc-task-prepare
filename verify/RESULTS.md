@@ -348,3 +348,10 @@ aud        = sts.amazonaws.com
   (`MalformedPolicyDocument … which is not scoped to all`). `aud` 만으로는 못 만든다.
 - `token.actions.githubusercontent.com:repository` 도 조건 키로 **수락**된다.
 - 정책 JSON heredoc 에서 `$ACCT:role/...` → zsh `:r` modifier 로 ARN 이 깨져 `The policy failed legacy parsing`. **`${ACCT}`** 필수(또 발생).
+
+## 최종 계정 상태 (3차 검증 후 전 리전 스윕)
+
+- **검증 리소스 잔재 0.** ECS/ECR/VPC/IAM role/GitHub OIDC provider 전부 삭제 확인.
+- 남아 있는 건 `apdev-*`(task3 연습 인프라)와 계정에 원래 있던 것들뿐. Macie 미활성, SAML provider 0개.
+- GitHub `ninejuan/lab-gha`(private) 는 **삭제하지 않고 남겨뒀다** — 검증 증거용. AWS 쪽 role 이 없어져서
+  재실행돼도 아무 일도 일어나지 않는다. 필요 없으면 `gh repo delete ninejuan/lab-gha`.
