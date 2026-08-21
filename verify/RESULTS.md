@@ -402,3 +402,27 @@ aud        = sts.amazonaws.com
   `ResourceInUseException: … not ACTIVE, instead in state UPDATING`. ACTIVE 대기 후 다음 작업.
 - **DDB `put-resource-policy` 직후 `get-resource-policy` 는 `PolicyNotFoundException`** — 최종적 일관성. 재시도 필요.
 - ECS Exec 은 **task role** 에 `ssmmessages:*` 4종이 필요하고, `enableExecuteCommand` 는 run-task/서비스 쪽 플래그다.
+
+## 4차 추가 — APIGW Gateway Response / CORS (us-west-2)
+
+```
+GET  /items        → 200, access-control-allow-origin: *, {"ok":true}
+OPTIONS /items     → 200, allow-origin: * / allow-methods: GET,OPTIONS / allow-headers: content-type,authorization
+GET  /nope         → 404, x-lab: custom-gwr, {"error":"not-found","trace":"1eba86b3-…"}
+gateway responses  → MISSING_AUTHENTICATION_TOKEN(404) / DEFAULT_4XX / THROTTLED(429)
+endpointConfiguration.types → REGIONAL
+```
+- **Gateway Response 는 "통합에 도달하기 전" APIGW 가 만드는 에러를 바꾼다.** 없는 경로는 기본 403
+  `MISSING_AUTHENTICATION_TOKEN` 인데, 이걸 404 + 커스텀 본문/헤더로 바꾼 게 실측으로 확인됐다.
+  Lambda 안에서 아무리 처리해도 이 응답은 못 바꾼다 — 채점이 404 본문을 보면 반드시 gateway response.
+- CORS 는 **OPTIONS 메서드 + MOCK 통합 + method/integration response 의 3개 헤더**를 직접 만들어야 한다(REST API).
+
+### 새 함정
+- **`put-configuration-recorder` 는 shorthand 로 bool 을 못 넘긴다** —
+  `--configuration-recorder "…recordingGroup={allSupported=false,…}"` 하면
+  `Invalid type for parameter …allSupported, value: false, type: <class 'str'>, valid types: <class 'bool'>`.
+  → **JSON 파일(`file://recorder.json`)로 넘겨야 한다.**
+- **Amazon MQ RabbitMQ 는 `mq.t3.micro` 를 지원하지 않는다**(실측) —
+  `BadRequestException: Broker engine type [RabbitMQ] does not support host instance type [mq.t3.micro]`.
+  `describe-broker-instance-options --engine-type RABBITMQ` 로 확인한 최소 사양은 **`mq.m7g.medium` / `mq.m5.large`**
+  (ap-northeast-2 도 동일). ActiveMQ 는 `mq.t3.micro` 가능.

@@ -176,7 +176,7 @@ APIID=$(aws apigatewayv2 create-api --region $R --name lab-http --protocol-type 
 ```
 `--target` 하나로 Lambda proxy + route + stage($default) + 통합을 자동 생성. **단 HTTP API 는 VTL 매핑 템플릿을 못 쓴다** — 케이스 A 같은 직접통합·변환이 필요하면 REST API 를 써야 한다.
 
-## 케이스 D — Gateway Response 커스터마이즈
+## 케이스 D — Gateway Response 커스터마이즈 [검증됨: 없는 경로→404 + 커스텀 헤더 `x-lab` + 커스텀 본문]
 
 VTL responseOverride 말고, 인증 실패 등 API GW 레벨 응답을 바꿀 때.
 ```bash
@@ -186,7 +186,7 @@ aws apigateway put-gateway-response --region $R --rest-api-id $API \
 ```
 자주 쓰는 타입: `DEFAULT_4XX`, `DEFAULT_5XX`, `ACCESS_DENIED`, `UNAUTHORIZED`, `THROTTLED`.
 
-## 케이스 E — endpoint 타입 / authorizer / CORS
+## 케이스 E — endpoint 타입 / authorizer / CORS [검증됨: REGIONAL + OPTIONS preflight 3헤더 실측]
 
 ```bash
 # private (VPC 내부만) — endpoint-configuration
