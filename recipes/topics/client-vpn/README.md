@@ -39,8 +39,8 @@ export R=ap-northeast-2 ACCT=$(aws sts get-caller-identity --query Account --out
 |---|---|---|---|
 | 01 | `cases/01-mutual-tls/` | 서버/클라 인증서(easy-rsa) → ACM import | ✅ live(cert→ACM→endpoint 성공) |
 | 02 | `cases/02-endpoint-deploy/` | endpoint+association+authz+route | ✅ live(endpoint 생성+.ovpn export, 즉시 삭제) |
-| 03 | `cases/03-saml-auth/` | SAML federated(Keycloak/IdC) | 스크립트 |
-| 04 | `cases/04-split-tunnel-dns/` | split-tunnel + DNS 서버(PHZ 해석) | 스크립트 |
+| 03 | `cases/03-saml-auth/` | SAML federated(Keycloak/IdC) | ✅ live(IAM SAML provider + federated endpoint + 그룹 인가 `GroupId=developers`) |
+| 04 | `cases/04-split-tunnel-dns/` | split-tunnel + DNS 서버(PHZ 해석) | ✅ live(`verify.sh` — split=true/dns=.2, association `available`, PHZ `db.day2.local`→10.40.1.99 실측) |
 
 ## 검증 (채점자 문체 + 2024 반칙검사)
 
@@ -72,6 +72,9 @@ netstat -an | findstr 5432  # 로컬 listen 없어야 (로컬 DB 우회 금지)
 - **split-tunnel off + 0.0.0.0/0 route 없으면** 인터넷 끊김. 목적에 맞게.
 - **삭제 순서**: route → authorization rule → network association(→ ENI 회수 대기) → endpoint → ACM 인증서.
 - **.ovpn 파일**: `export-client-vpn-client-configuration` + 클라 인증서/키 삽입. AWS VPN Client 로 import.
+- **★ `.ovpn` 에 `dhcp-option DNS` 는 없다**(실측) — DNS 서버는 연결 시 서버가 push 한다. 파일에 있는 건 `remote …prod.clientvpn.<R>.amazonaws.com 443`, `cipher AES-256-GCM`, **`verify-x509-name <서버 CN> name`**. 설정 확인은 `describe-client-vpn-endpoints … DnsServers`.
+- **SAML endpoint 는 `SelfServicePortalUrl` 이 자동 생성**(실측) — 사용자가 거기서 로그인해 프로필을 받는다. 그룹 인가는 `--access-group-id <그룹>` → 규칙에 `AccessAll=False, GroupId=<그룹>` 으로 남는다.
+- association 완료 후 라우트는 `10.x.0.0/16 Nat active` 형태로 **자동 생성**된다(직접 `create-client-vpn-route` 안 해도 됨).
 
 ## context7 참고
 

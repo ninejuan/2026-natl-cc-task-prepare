@@ -25,7 +25,7 @@
 |---|---|---|---|
 | 01 | awslogs → CloudWatch | `cases/01-awslogs/` (tier2 register 실검증) | ✓ |
 | 02 | FireLens → CloudWatch | `taskdefs/firelens-sidecar.json` | ✅ live(앱 JSON 로그 → Fluent Bit → CW, ecs_task_arn 메타 부착 실측) |
-| 03 | FireLens → OpenSearch | `cases/03-firelens-opensearch/` | 컨테이너정의(OpenSearch 도메인 필요) |
+| 03 | FireLens → OpenSearch | `cases/03-firelens-opensearch/` | ✅ **live**(앱 stdout → Fluent Bit → `ecs-logs` 인덱스 33건, ecs 메타 포함) |
 | 04 | FireLens → S3 (아카이브) | `cases/04-firelens-s3/` | ✅ live(앱 로그 → S3 객체 도착, ecs 메타 포함) |
 
 ## 검증 (채점자 문체)
@@ -48,7 +48,9 @@ aws opensearch describe-domain --region $R --domain-name lab-logs --query 'Domai
 - **★ FireLens 앱 로그의 CloudWatch 출력은 task role** 이 담당(cloudwatch output). task role 에 `logs:CreateLogGroup/Stream/PutLogEvents` 필요.
 - **`enable-ecs-log-metadata:true`** → 로그에 `ecs_cluster`/`ecs_task_arn`/`container_name` 자동 부착(실측 확인).
 - **awslogs 는 로그그룹 사전 생성** 또는 `awslogs-create-group=true`.
-- **OpenSearch 는 생성 ~15분 + 시간과금** — 준비 계정에선 도메인 실생성 주의. 채점은 미리 떠 있는 전제.
+- **OpenSearch 도메인 생성 실측 ~50분**(t3.small.search 1노드, 가이드상 "~15분"보다 훨씬 오래) + 시간과금. `Processing=True` 동안 `Endpoint` 는 `None`. 채점은 미리 떠 있는 전제.
+- **OpenSearch 출력에 `Type` 옵션 쓰지 말 것**(2.x 는 매핑 타입 없음) — `Suppress_Type_Name: On` 만. 도메인 조회도 SigV4 서명 필요(`cases/03-firelens-opensearch/osquery.py`).
+- **taskdef JSON 을 셸 heredoc 으로 만들지 말 것**(실측) — 앱 command 의 `$i`/`$((i+1))` 가 셸에 치환돼 JSON 이 깨진다. 템플릿+`sed` 치환.
 - Logs Insights 쿼리는 `../../aws/tier3/cloudwatch/logs-insights.md` 15종 재사용.
 
 ## context7 참고

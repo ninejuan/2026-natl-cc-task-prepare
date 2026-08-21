@@ -3,7 +3,7 @@
     "name": "app",
     "image": "public.ecr.aws/docker/library/busybox:latest",
     "essential": true,
-    "command": ["sh", "-c", "i=0; while true; do echo \"{\\\"level\\\":\\\"INFO\\\",\\\"seq\\\":$i}\"; i=$((i+1)); sleep 5; done"],
+    "command": ["sh", "-c", "i=0; while true; do echo \"{\\\"level\\\":\\\"INFO\\\",\\\"seq\\\":$i,\\\"msg\\\":\\\"hello-opensearch\\\"}\"; i=$((i+1)); sleep 3; done"],
     "logConfiguration": {
       "logDriver": "awsfirelens",
       "options": {
@@ -11,11 +11,11 @@
         "Host": "search-lab-xxxx.ap-northeast-2.es.amazonaws.com",
         "Port": "443",
         "Index": "ecs-logs",
-        "Type": "_doc",
         "AWS_Auth": "On",
         "AWS_Region": "ap-northeast-2",
         "tls": "On",
-        "Suppress_Type_Name": "On"
+        "Suppress_Type_Name": "On",
+        "Retry_Limit": "2"
       }
     }
   },

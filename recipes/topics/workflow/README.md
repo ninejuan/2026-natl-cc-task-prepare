@@ -22,7 +22,7 @@
 | 03 | Map / Parallel / DistributedMap | 대량 병렬 | `cases/03-map-parallel/` ✅ live(ASL 수락) |
 | 04 | Callback(task token) | 외부 대기 | `cases/04-callback/` ✅ live(ASL 수락) |
 | 05 | **No-Lambda(SDK 직접통합)** | SFN→DDB SDK, APIGW→SFN VTL | ✅ live `cases/05-no-lambda/` (lambda=[]) |
-| 06 | Express vs Standard | 고빈도 단기 vs 장기 | `cases/06-express-standard/` |
+| 06 | Express vs Standard | 고빈도 단기 vs 장기 | `cases/06-express-standard/` ✅ live(`verify.sh` — Express `list-executions`=`StateMachineTypeNotSupported` 실측) |
 
 ## ★ No-Lambda 변형 (2025 추가과제 핵심)
 
@@ -53,6 +53,7 @@ aws lambda list-functions --region $R --query Functions --output text   # [] (�
 - **SFN Task ARN**: `arn:aws:states:::dynamodb:updateItem`(SDK) vs `arn:aws:states:::lambda:invoke`(Lambda). zsh `${VAR}` 주의.
 - **IAM role 전파 지연** — apply 직후 실행하면 실패. 10초 대기(실검증).
 - **Express 는 로그만**(실행 이력 없음), Standard 는 실행 이력 조회 가능. 채점이 이력 보면 Standard.
+  - 실측: Express 에 `list-executions` 하면 빈 배열이 아니라 **`StateMachineTypeNotSupported` 에러**. Express 로깅엔 role 에 `logs:CreateLogDelivery` 등 8종 + 로그그룹 ARN 끝 `:*` 필요.
 - APIGW 응답에서 큰따옴표 제거(VTL `$util` / integration response).
 - **논프록시(AWS type) 요청템플릿의 에러 분기 body 는 클라가 못 본다(실검증)** — 요청템플릿 출력은 DDB 로 보내는 요청 payload 이고, 클라 응답 body 는 항상 통합 **응답**템플릿(`ddb-value-raw-res.vtl`)에서 나온다. `ddb-getitem-req.vtl` 의 `mysecret*`/빈값 분기는 `$context.responseOverride.status`(403/400)만 실제로 전달되고 body 는 응답템플릿의 "Not Found" 로 덮인다. 상태코드 검증엔 충분하나, 에러 body 까지 원하면 응답템플릿에서 status 별로 분기할 것.
 

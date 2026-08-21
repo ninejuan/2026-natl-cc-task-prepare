@@ -17,6 +17,7 @@ def process(body: str):
 def handler(event, context):
     failures = []
     for rec in event["Records"]:
+        print(f"recv {rec['messageId']} {rec['body']}")   # 재처리 여부 확인용
         try:
             process(rec["body"])
         except Exception as e:
