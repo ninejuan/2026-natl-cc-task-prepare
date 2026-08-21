@@ -1,34 +1,70 @@
-# .github/workflows/deploy.yml — GitHub Actions → ECR → ECS 롤링 배포.
-# 필수 모듈(2025 #4)이 GitHub + GHA. OIDC 로 장기 키 없이 AWS 접근(role 은 case 03-oidc 에서 실검증).
-# ★ 실행 자체는 GitHub repo 가 있어야 하지만, 산출물(build→ECR→ECS)은 CodePipeline 케이스(01-codepipeline-ecs)로 동일하게 실검증됨.
+# GitHub Actions → ECR → ECS 롤링 배포 (OIDC, 장기 키 없음)
+# ★ 실제 GitHub repo(ninejuan/lab-gha)에서 끝까지 돌려 검증한 워크플로다.
+#   OIDC assume → ECR push → taskdef 새 리비전 → ECS 롤링 → curl 로 새 앱 응답 확인까지 성공.
+#   role trust 는 ../03-oidc/trust-policy.json (sub 불변ID 함정 주의).
 name: deploy
 on:
   push:
     branches: [main]
+  workflow_dispatch:
 permissions:
-  id-token: write      # OIDC
+  id-token: write      # ★ OIDC 토큰 발급에 필수. 없으면 configure-aws-credentials 가 실패한다
   contents: read
 env:
-  AWS_REGION: ap-northeast-2
-  ECR: ${{ secrets.ECR_URI }}       # <acct>.dkr.ecr.<region>.amazonaws.com
-  CLUSTER: lab-ecs
-  SERVICE: lab-svc
+  AWS_REGION: ap-northeast-1
+  ECR_REPO: lab-gha
+  CLUSTER: lab-gha-cluster
+  SERVICE: lab-gha-svc
+  FAMILY: lab-gha
+  CONTAINER: web
 jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - name: debug OIDC claims
+        run: |
+          T=$(curl -sS -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+               "$ACTIONS_ID_TOKEN_REQUEST_URL&audience=sts.amazonaws.com" | python3 -c 'import sys,json;print(json.load(sys.stdin)["value"])')
+          python3 - "$T" <<'PY'
+          import sys,base64,json
+          p=sys.argv[1].split('.')[1]; p+='='*(-len(p)%4)
+          c=json.loads(base64.urlsafe_b64decode(p))
+          print("sub =", c.get("sub"))
+          print("aud =", c.get("aud"))
+          print("iss =", c.get("iss"))
+          print("repository =", c.get("repository"))
+          PY
+
       - uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.ACCT }}:role/gha-deploy   # OIDC trust: repo:OWNER/REPO:ref:refs/heads/main
-          aws-region: ${{ env.AWS_REGION }}
-      - uses: aws-actions/amazon-ecr-login@v2
+          role-to-assume: arn:aws:iam::${{ secrets.ACCT }}:role/gha-deploy
+          aws-region: ap-northeast-1
+      - run: aws sts get-caller-identity
+
+      - id: ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
       - name: build & push
         run: |
-          docker build -t $ECR/app:$GITHUB_SHA .
-          docker push $ECR/app:$GITHUB_SHA
-      - name: rolling deploy (ECS)
+          IMG=${{ steps.ecr.outputs.registry }}/$ECR_REPO:$GITHUB_SHA
+          docker build -t "$IMG" .
+          docker push "$IMG"
+          echo "IMG=$IMG" >> $GITHUB_ENV
+
+      - name: register new task definition revision
         run: |
-          # taskdef 의 image 를 새 태그로 바꿔 재등록 후 서비스 업데이트 (또는 force-new-deployment)
-          aws ecs update-service --cluster $CLUSTER --service $SERVICE --force-new-deployment
+          aws ecs describe-task-definition --task-definition $FAMILY --query taskDefinition > td.json
+          python3 render_td.py td.json td-new.json
+          REV=$(aws ecs register-task-definition --cli-input-json file://td-new.json \
+                --query 'taskDefinition.revision' --output text)
+          echo "REV=$REV" >> $GITHUB_ENV
+          echo "new revision: $FAMILY:$REV"
+
+      - name: rolling deploy
+        run: |
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE --task-definition $FAMILY:$REV
           aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE
+          aws ecs describe-services --cluster $CLUSTER --services $SERVICE \
+            --query 'services[0].[taskDefinition,runningCount,deployments[0].rolloutState]' --output text

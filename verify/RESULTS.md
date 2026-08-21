@@ -309,3 +309,42 @@ tier3 lab 전량 정리.
 - **잔여 0** — Lambda@Edge 복제본도 회수되어 `lab-edge-resize2/3` + `lab-edge-role` 까지 전부 삭제 완료.
   (Lambda@Edge 는 배포에서 association 을 떼고 배포를 지운 뒤 **복제본 회수까지 기다려야** 삭제된다 — 그 전엔 `InvalidParameterValueException: … because it is a replicated function`.)
 - `apdev-*`(task3 연습 인프라)는 손대지 않았다.
+
+## 3차 — GHA 실계정 E2E + IdC 한계 확인
+
+| 케이스 | 결과 | 확인 내용 |
+|---|---|---|
+| **cicd 01** GHA→ECR→ECS | ✅ **live E2E** | 실제 repo `ninejuan/lab-gha`(검증 후 정리) + `ap-northeast-1`. OIDC assume → ECR push(git SHA) → taskdef `lab-gha:1`→**`:2`** → 롤링 `COMPLETED` → `curl http://<task-ip>:8080/` → **`lab-gha v1`** |
+| **cicd 03** GHA OIDC | ✅ live E2E | `assumed-role/lab-gha-deploy/GitHubActions` 실제 발급 |
+| **keycloak-sso 03** IdC + 외부 IdP | ⛔ 불가 확인 | org 멤버 계정은 IdC 인스턴스 생성 불가 + 조직 인스턴스 접근 거부 |
+
+### ★★ GitHub OIDC `sub` 클레임에 불변 ID 가 들어간다 (이번 세션 최대 발견)
+
+워크플로 안에서 JWT 를 디코드해 실제 클레임을 확인한 결과:
+```
+sub        = repo:ninejuan@79080468/lab-gha@1341682700:ref:refs/heads/main
+repository = ninejuan/lab-gha
+aud        = sts.amazonaws.com
+```
+문서·예제가 쓰는 `repo:OWNER/REPO:ref:refs/heads/main` 형식이 **아니다**. `OWNER@<id>/REPO@<id>` 로 숫자 ID 가 끼어든다.
+`StringEquals` 로 옛 형식을 고정한 trust policy 는 **절대 매칭되지 않고**, 증상은
+`configure-aws-credentials` 가 **~2분간 12회 재시도 후** `Not authorized to perform sts:AssumeRoleWithWebIdentity` 한 줄뿐이라 원인 파악이 어렵다.
+
+**해결**(양쪽 형식 커버 + `repository` 로 조임) → 바꾸자마자 assume 성공:
+```json
+"StringEquals": {"…:aud":"sts.amazonaws.com", "…:repository":"OWNER/REPO"},
+"StringLike":   {"…:sub":"repo:OWNER*/REPO*:ref:refs/heads/main"}
+```
+진단 스텝(워크플로에서 JWT 디코드)은 `recipes/topics/cicd/cases/03-oidc/README.md` 에 넣어뒀다.
+
+### 그 밖에 실행으로 잡은 것
+- **`--force-new-deployment` 로는 새 이미지가 안 나간다** — 같은 taskdef 로 재시작일 뿐.
+  `describe-task-definition` → image 교체 → `register-task-definition` → `update-service --task-definition` 이 정답.
+  (기존 `deploy.yml` 이 `--force-new-deployment` 였다 → 수정)
+- `register-task-definition` 은 describe 응답의 읽기전용 필드(`taskDefinitionArn`, `revision`, `status`,
+  `requiresAttributes`, `compatibilities`, `registeredAt/By`, `deregisteredAt`)를 제거해야 받는다(`render_td.py`).
+- 배포 role 에 **`iam:PassRole`**(execution/task role 대상) 없으면 `register-task-definition` 이 거부된다.
+- **AWS 는 GitHub OIDC trust 에 `sub`/`job_workflow_ref` 조건이 없으면 정책 자체를 거부**한다
+  (`MalformedPolicyDocument … which is not scoped to all`). `aud` 만으로는 못 만든다.
+- `token.actions.githubusercontent.com:repository` 도 조건 키로 **수락**된다.
+- 정책 JSON heredoc 에서 `$ACCT:role/...` → zsh `:r` modifier 로 ARN 이 깨져 `The policy failed legacy parsing`. **`${ACCT}`** 필수(또 발생).
