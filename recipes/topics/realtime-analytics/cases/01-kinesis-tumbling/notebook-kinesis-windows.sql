@@ -68,8 +68,15 @@ CREATE TABLE agg_sink (
     'format' = 'json'
 );
 
+-- %flink.ssql
+-- ★ 파일 싱크는 체크포인트마다 커밋된다 → 인터랙티브 노트북은 먼저 켜야 S3 에 파일이 생긴다(실측).
+SET 'execution.checkpointing.interval' = '10s';
+
 -- %flink.ssql(type=update)
+-- ★ GROUP BY 에 window_start 를 반드시 포함할 것(실측).
+--   window_end 만 넣으면 윈도우 집계가 아니라 일반 GroupAggregate 가 되어 update(retraction) 를 내고
+--   파일시스템 싱크가 "doesn't support consuming update changes" 로 거부한다.
 INSERT INTO agg_sink
 SELECT window_end, event_type, COUNT(*) AS cnt
 FROM TABLE(TUMBLE(TABLE clicks, DESCRIPTOR(event_time), INTERVAL '1' MINUTE))
-GROUP BY window_end, event_type;
+GROUP BY window_start, window_end, event_type;
