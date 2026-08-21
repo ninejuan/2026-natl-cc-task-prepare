@@ -18,7 +18,7 @@
 | 01 | Producer → MSK → Lambda ESM → DDB | Lambda event source mapping | `cases/01-lambda-esm/` | ✅ 실검증(eu-central-1): 클러스터 ACTIVE + ESM Enabled |
 | 02 | Producer → MSK → EC2 consumer | kafka-python 컨슈머 | `cases/02-ec2-consumer/` | ✅ live(eu-west-1): 클러스터 ACTIVE→in-VPC EC2 에서 topic 생성+produce+consume 왕복(IAM OAUTHBEARER) |
 | 03 | IAM SASL 인증 | OAUTHBEARER+signer | `cases/03-iam-sasl/` | ✅ 실검증(9098) |
-| 04 | Serverless vs provisioned | 클러스터 타입 | `cases/04-serverless-vs-provisioned/` | 비교 |
+| 04 | Serverless vs provisioned | 클러스터 타입 | `cases/04-serverless-vs-provisioned/` | ✅ **live 비교**(us-east-1, 두 타입 동시 생성→관찰 차이 실측) |
 
 > **실검증 01 (2026-08-20, eu-central-1)**: MSK Serverless `lab-euc1-msk` ACTIVE
 > (ClusterType=SERVERLESS, IAM SASL 9098), Lambda ESM `topics=[lab-topic]` **State=Enabled**.
@@ -55,7 +55,8 @@ aws dynamodb scan --region $R --table-name lab-events --select COUNT --query Cou
 
 ## 함정
 
-- **MSK 생성 느림·비용 큼** — Serverless 도 시간과금. provisioned 는 ~15분+. 검증 후 즉시 삭제.
+- **MSK 생성 느림·비용 큼** — Serverless 실측 ~10분, **provisioned(kafka.t3.small×2) 실측 ~60분**. 검증 후 즉시 삭제.
+- **타입 구분은 `list-clusters-v2` 의 `ClusterType`**. serverless 는 브로커/ZooKeeper/스토리지 필드가 아예 없고 `list-nodes` 도 `BadRequestException`(실측) — 채점이 브로커 수·인스턴스 타입을 보면 provisioned 필수.
 - **IAM SASL 9098** + SG self-inbound. 평문 9092 아님(Serverless).
 - **IAM 인증은 signer+OAUTHBEARER**(위 참조, 내장 AWS_MSK_IAM 은 타임아웃). `AWS_DEFAULT_REGION` 필수.
 - **Lambda ESM 은 VPC 접근** — Lambda 가 MSK 브로커 서브넷에 닿아야(VPC 연결 or Serverless).
