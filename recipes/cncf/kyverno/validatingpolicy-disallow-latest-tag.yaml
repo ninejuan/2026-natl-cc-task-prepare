@@ -1,0 +1,27 @@
+# ★ Kyverno 신문법. `ClusterPolicy(kyverno.io)` 는 deprecated 라 서버가 경고를 뱉는다:
+#     "ClusterPolicy (kyverno.io) is deprecated … migrate to ValidatingPolicy, MutatingPolicy,
+#      GeneratingPolicy or ImageValidatingPolicy (policies.kyverno.io)"
+#
+# ValidatingPolicy 는 쿠버네티스 내장 ValidatingAdmissionPolicy 와 스펙이 거의 같다(CEL).
+# 차이: Kyverno 가 실행하므로 바인딩 리소스를 따로 안 만들고 spec.validationActions 로 끝난다.
+# 내장 VAP 로 되는 요구면 컨트롤러 없는 VAP(../../k8s/admission/)를 먼저 고려할 것.
+apiVersion: policies.kyverno.io/v1
+kind: ValidatingPolicy
+metadata:
+  name: disallow-latest-tag-vpol
+spec:
+  validationActions: ["Deny"]
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: [""]
+        apiVersions: ["v1"]
+        operations: ["CREATE", "UPDATE"]
+        resources: ["pods"]
+    namespaceSelector:
+      matchLabels:
+        kubernetes.io/metadata.name: prod
+  validations:
+    - expression: >-
+        object.spec.containers.all(c, c.image.contains(':') && !c.image.endsWith(':latest'))
+      message: "이미지에 명시적 태그가 있어야 하고 ':latest' 는 허용되지 않습니다 (ValidatingPolicy)"

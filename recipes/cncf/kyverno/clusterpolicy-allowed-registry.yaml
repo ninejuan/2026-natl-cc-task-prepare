@@ -1,4 +1,8 @@
 # CEL 방식. pattern 으로 표현하기 어려운 조건(문자열 함수, 전체 순회)에 쓴다.
+#
+# ★ 허용 목록은 반드시 "베이스 이미지 레지스트리"까지 포함시켜라.
+#   우리 ECR 하나만 허용하면 public.ecr.aws 에서 받는 nginx/alpine 사이드카·초기화 컨테이너가
+#   전부 막혀서 클러스터가 안 뜬다. 실제로 test-pod-pass.yaml 이 이것 때문에 거부됐다(실검증).
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -14,9 +18,13 @@ spec:
       validate:
         failureAction: Enforce
         cel:
+          variables:
+            - name: allowed
+              expression: >-
+                ['000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/', 'public.ecr.aws/']
           expressions:
             - expression: >-
                 object.spec.containers.all(c,
-                  c.image.startsWith('000000000000.dkr.ecr.ap-northeast-2.amazonaws.com/')
-                  && c.image.contains(':'))
-              message: "허용된 ECR 레지스트리의 태그 지정 이미지만 사용할 수 있습니다"
+                  variables.allowed.exists(p, c.image.startsWith(p))
+                  && c.image.contains(':') && !c.image.endsWith(':latest'))
+              message: "허용된 레지스트리(사내 ECR / public.ecr.aws)의 태그 지정 이미지만 사용할 수 있습니다"
