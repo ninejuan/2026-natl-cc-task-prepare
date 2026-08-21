@@ -50,7 +50,7 @@
 | `glue/` Crawler | ✓ | S3 JSON 스캔 → 스키마(event_type/id)+파티션(dt) 자동발견, SUCCEEDED |
 | `glue/etl_json_to_parquet.py` | 문서 | 스크립트 제공(구문). job 실행은 DPU 비용 커서 미실행 |
 | `managed-flink/` Studio | ✓ | RUNNING, ZEPPELIN-FLINK-3_0, Glue 카탈로그 연결 확인 |
-| `managed-flink/notebook-*.sql` | 문서 | SQL 노트북 예제(Zeppelin UI 실행 필요, CLI 불가) |
+| `managed-flink/notebook-*.sql` | ✅ live | Zeppelin REST(presigned 쿠키)로 실행 — TUMBLE/HOP/CUMULATE/TopN/SESSION + Kinesis 소스 결과 확인. ★커넥터 JAR 추가 필요 |
 | `msk/` Serverless 클러스터 | ✓ | **~15분 내 ACTIVE**(provisioned보다 빠름), IAM SASL 부트스트랩 9098 확인 |
 | `msk/producer.py·consumer.py` | 문서 | IAM 인증 코드. produce/consume 은 VPC 내 EC2 필요(미실행) |
 
@@ -219,7 +219,7 @@ tier3 lab 전량 정리.
 - `bin/bootstrap.sh` 를 CloudShell(bash 5, Amazon Linux 2023)에서 실제 실행
 - `lambda/image-resize` (Pillow 네이티브 의존성 — 실배포 시 아키텍처 wheel 확인 필요)
 - `apigateway/vtl/sns-publish-req`, `validate-transform-req` (문법만, 실 API 미검증)
-- `managed-flink` SQL 노트북 (Zeppelin UI 기반 — CLI 자동화 불가. Studio RUNNING 은 확인, SQL 실행은 브라우저 필요)
+- ~~`managed-flink` SQL 노트북 (CLI 자동화 불가)~~ → **정정: 가능**. presigned URL 쿠키로 Zeppelin REST 사용. 윈도우 SQL 5종 + Kinesis 소스 실행 결과 확인(아래 2026-08-21 절)
 - k8s/cncf 매니페스트 (오프라인 문법만)
 
 ---
