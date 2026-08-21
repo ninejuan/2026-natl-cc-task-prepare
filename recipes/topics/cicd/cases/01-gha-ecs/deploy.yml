@@ -1,0 +1,34 @@
+# .github/workflows/deploy.yml — GitHub Actions → ECR → ECS 롤링 배포.
+# 필수 모듈(2025 #4)이 GitHub + GHA. OIDC 로 장기 키 없이 AWS 접근(role 은 case 03-oidc 에서 실검증).
+# ★ 실행 자체는 GitHub repo 가 있어야 하지만, 산출물(build→ECR→ECS)은 CodePipeline 케이스(01-codepipeline-ecs)로 동일하게 실검증됨.
+name: deploy
+on:
+  push:
+    branches: [main]
+permissions:
+  id-token: write      # OIDC
+  contents: read
+env:
+  AWS_REGION: ap-northeast-2
+  ECR: ${{ secrets.ECR_URI }}       # <acct>.dkr.ecr.<region>.amazonaws.com
+  CLUSTER: lab-ecs
+  SERVICE: lab-svc
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.ACCT }}:role/gha-deploy   # OIDC trust: repo:OWNER/REPO:ref:refs/heads/main
+          aws-region: ${{ env.AWS_REGION }}
+      - uses: aws-actions/amazon-ecr-login@v2
+      - name: build & push
+        run: |
+          docker build -t $ECR/app:$GITHUB_SHA .
+          docker push $ECR/app:$GITHUB_SHA
+      - name: rolling deploy (ECS)
+        run: |
+          # taskdef 의 image 를 새 태그로 바꿔 재등록 후 서비스 업데이트 (또는 force-new-deployment)
+          aws ecs update-service --cluster $CLUSTER --service $SERVICE --force-new-deployment
+          aws ecs wait services-stable --cluster $CLUSTER --services $SERVICE

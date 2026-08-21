@@ -1,0 +1,37 @@
+[
+  {
+    "name": "app",
+    "image": "public.ecr.aws/docker/library/busybox:latest",
+    "essential": true,
+    "command": ["sh", "-c", "i=0; while true; do echo \"{\\\"level\\\":\\\"INFO\\\",\\\"seq\\\":$i}\"; i=$((i+1)); sleep 5; done"],
+    "logConfiguration": {
+      "logDriver": "awsfirelens",
+      "options": {
+        "Name": "opensearch",
+        "Host": "search-lab-xxxx.ap-northeast-2.es.amazonaws.com",
+        "Port": "443",
+        "Index": "ecs-logs",
+        "Type": "_doc",
+        "AWS_Auth": "On",
+        "AWS_Region": "ap-northeast-2",
+        "tls": "On",
+        "Suppress_Type_Name": "On"
+      }
+    }
+  },
+  {
+    "name": "log-router",
+    "image": "public.ecr.aws/aws-observability/aws-for-fluent-bit:stable",
+    "essential": true,
+    "firelensConfiguration": { "type": "fluentbit", "options": { "enable-ecs-log-metadata": "true" } },
+    "logConfiguration": {
+      "logDriver": "awslogs",
+      "options": {
+        "awslogs-group": "/ecs/lab-firelens-router",
+        "awslogs-region": "ap-northeast-2",
+        "awslogs-stream-prefix": "router",
+        "awslogs-create-group": "true"
+      }
+    }
+  }
+]

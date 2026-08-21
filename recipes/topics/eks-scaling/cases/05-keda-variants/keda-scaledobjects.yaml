@@ -1,0 +1,58 @@
+# KEDA ScaledObject 변형 (cron / prometheus / SQS). keda operator 설치 전제(../../cncf/keda/).
+# ★ 검증은 사용자 k8s 패스에서(일회용 EKS). apiVersion keda.sh/v1alpha1.
+---
+# 1) cron — 업무시간(09-18)에만 최소 5개
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: app-cron
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: app
+  minReplicaCount: 0
+  maxReplicaCount: 10
+  triggers:
+    - type: cron
+      metadata:
+        timezone: Asia/Seoul
+        start: "0 9 * * *"
+        end: "0 18 * * *"
+        desiredReplicas: "5"
+---
+# 2) prometheus — 커스텀 지표(예: http 요청률) 기준
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: app-prom
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: app
+  minReplicaCount: 1
+  maxReplicaCount: 20
+  triggers:
+    - type: prometheus
+      metadata:
+        serverAddress: http://prometheus.monitoring.svc:9090
+        query: sum(rate(http_requests_total[1m]))
+        threshold: "100"
+---
+# 3) aws-sqs-queue — 큐 길이 기준(scale-to-0 가능). IRSA/PodIdentity 로 SQS 접근.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: app-sqs
+  namespace: default
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 0
+  maxReplicaCount: 30
+  triggers:
+    - type: aws-sqs-queue
+      metadata:
+        queueURL: https://sqs.ap-northeast-2.amazonaws.com/ACCT/lab-queue
+        queueLength: "5"
+        awsRegion: ap-northeast-2
+        identityOwner: operator     # KEDA operator 의 IRSA 사용

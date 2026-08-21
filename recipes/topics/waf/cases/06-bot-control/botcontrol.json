@@ -1,0 +1,17 @@
+[
+  {
+    "Name": "botcontrol",
+    "Priority": 1,
+    "OverrideAction": { "None": {} },
+    "Statement": {
+      "ManagedRuleGroupStatement": {
+        "VendorName": "AWS",
+        "Name": "AWSManagedRulesBotControlRuleSet",
+        "ManagedRuleGroupConfigs": [
+          { "AWSManagedRulesBotControlRuleSet": { "InspectionLevel": "COMMON" } }
+        ]
+      }
+    },
+    "VisibilityConfig": { "SampledRequestsEnabled": true, "CloudWatchMetricsEnabled": true, "MetricName": "botcontrol" }
+  }
+]

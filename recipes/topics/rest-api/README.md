@@ -26,9 +26,9 @@
 | # | 케이스 | 저장소 | 기반 |
 |---|---|---|---|
 | 01 | APIGW REST + Lambda + DDB CRUD | DynamoDB | crud-booking ✓ |
-| 02 | HTTP API(v2) + Lambda | DynamoDB | `cases/02-http-api/` |
+| 02 | HTTP API(v2) + Lambda | DynamoDB | ✅ live(POST→GET 왕복, base64 body 함정 수정) |
 | 03 | ALB → Lambda(다른 이벤트 형식) | DynamoDB | alb-response ✓ |
-| 04 | DocumentDB CRUD | DocumentDB | `cases/04-docdb-crud/` |
+| 04 | DocumentDB CRUD | DocumentDB | 코드(handler.py) — DocDB 클러스터+VPC 필요 |
 | 05 | 입력 검증 + 에러 응답 | - | crud-booking |
 
 ## 핵심: POST/GET 핸들러 (이벤트 형식 주의)

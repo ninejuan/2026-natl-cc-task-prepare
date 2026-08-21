@@ -1,0 +1,21 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "AllowSpecificRoleRW",
+      "Effect": "Allow",
+      "Principal": { "AWS": "arn:aws:iam::ACCT:role/APP_ROLE" },
+      "Action": ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite"],
+      "Resource": "arn:aws:elasticfilesystem:REGION:ACCT:file-system/FS_ID",
+      "Condition": { "Bool": { "elasticfilesystem:AccessedViaMountTarget": "true" } }
+    },
+    {
+      "Sid": "DenyEveryoneElse",
+      "Effect": "Deny",
+      "Principal": "*",
+      "Action": ["elasticfilesystem:ClientMount", "elasticfilesystem:ClientWrite", "elasticfilesystem:ClientRootAccess"],
+      "Resource": "arn:aws:elasticfilesystem:REGION:ACCT:file-system/FS_ID",
+      "Condition": { "StringNotEquals": { "aws:PrincipalArn": "arn:aws:iam::ACCT:role/APP_ROLE" } }
+    }
+  ]
+}

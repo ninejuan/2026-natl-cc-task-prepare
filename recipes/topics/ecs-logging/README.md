@@ -25,8 +25,8 @@
 |---|---|---|---|
 | 01 | awslogs → CloudWatch | `taskdefs/fargate-minimal.json` | tier2 ✓ |
 | 02 | FireLens → CloudWatch | `taskdefs/firelens-sidecar.json` | ✅ live(앱 JSON 로그 → Fluent Bit → CW, ecs_task_arn 메타 부착 실측) |
-| 03 | FireLens → OpenSearch | `cases/03-firelens-opensearch/` | 신규 |
-| 04 | FireLens → S3 (아카이브) | `cases/04-firelens-s3/` | 신규 |
+| 03 | FireLens → OpenSearch | `cases/03-firelens-opensearch/` | 컨테이너정의(OpenSearch 도메인 필요) |
+| 04 | FireLens → S3 (아카이브) | `cases/04-firelens-s3/` | 컨테이너정의(02 인프라 재사용) |
 
 ## 검증 (채점자 문체)
 
