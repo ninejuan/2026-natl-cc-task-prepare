@@ -274,3 +274,37 @@ tier3 lab 전량 정리.
 - DDB **GSI backfill 중 `delete-table` 거부**(`ResourceInUseException`).
 - Client VPN `.ovpn` 에 **`dhcp-option DNS` 없음**(연결 시 서버 push). 대신 `verify-x509-name <서버CN>` 이 있어 **CN=FQDN** 이 필수인 이유가 드러난다.
 - MSK **provisioned 생성 실측 ~60분**(t3.small×2), serverless ~10분.
+
+## 추가분 (같은 날, 2차)
+
+| 케이스 | 리전 | 결과 | 확인 내용 |
+|---|---|---|---|
+| **realtime-analytics 04** 이상탐지→S3 | eu-west-2 | ✅ live | `flink-json/dt=2026-08-21/{_SUCCESS, part-…(399줄 JSON)}` S3 적재 확인 |
+| **realtime-analytics 02** MSK 소스 | eu-west-2 | ⚠️ 커넥터까지 live | kafka 테이블 생성 성공, SELECT 는 `No resolvable bootstrap urls`(=팩토리 통과, 가짜 엔드포인트만 실패) |
+| **keycloak-sso 01** SAML→IAM role×2 | 글로벌 | ✅ AWS 쪽 live | SAML provider + role×2 + `SAML:aud` trust 조건 실측 |
+| **keycloak-sso 02** OIDC→IAM role | 글로벌 | ⚠️ 제약 발견 | **사설 issuer 로는 OIDC provider 생성 불가**(AWS 가 `/.well-known` 조회) |
+
+### 레시피 SQL 자체가 안 돌던 것 3건 — 실행으로 찾아 고침 (realtime-analytics)
+
+1. `'format' = 'parquet'` → `Could not find any format factory for identifier 'parquet' in the classpath.`
+   Studio 기본엔 parquet 포맷이 없다. **json/csv 는 내장.**
+2. `GROUP BY window_end, event_type` → `Table sink … doesn't support consuming update changes`.
+   `window_start` 를 빼면 윈도우 집계가 아니라 일반 GroupAggregate → retraction 발생 → 파일 싱크(append-only) 거부.
+   **`GROUP BY window_start, window_end, …`** 로 수정.
+3. `LAG(cnt,1) OVER (ORDER BY window_start)` → `OVER windows' ordering … must be defined on a time attribute`,
+   `window_time` 으로 바꾸면 **NullPointerException**. Flink 1.15 스트리밍 OVER 는 LAG/LEAD 미지원.
+   → **윈도우 집계 뷰 self-join**(`p.window_start = c.window_start - INTERVAL '1' MINUTE`)으로 대체(실행 성공).
++ 파일 싱크는 **체크포인트마다 커밋** → `SET 'execution.checkpointing.interval' = '10s';` 선행 필수.
+
+### IAM 페더레이션 (실측)
+- **SAML provider 는 IdP 접근성을 검사하지 않는다** — 존재하지 않는 도메인 메타데이터로도 생성된다.
+  `ValidUntil` 은 자동으로 +100년.
+- **OIDC provider 는 issuer 를 실제 조회한다** — 사설 Keycloak(`*.local`)이면 `InvalidInput` 으로 실패.
+  → **VPC 내부 Keycloak 이면 SAML 경로가 정답.**
+- MSK Maven 아티팩트: `software.amazon.msk:aws-msk-iam-auth:1.1.6` 수락, `flink-sql-connector-kafka:1.15.4` 는 거부(→ `flink-connector-kafka`).
+
+## 계정 최종 상태 (전 리전 스윕)
+
+- 검증용 리소스 **잔재 0**. Macie 는 원래대로 **미활성** 복원.
+- 유일한 잔여: `lab-edge-resize2/3`(us-east-1 Lambda@Edge) — **엣지 복제본 회수 대기라 삭제 불가**, 과금 없음. 수 시간 뒤 `delete-function` 가능. `lab-edge-role` 도 그때 같이 삭제.
+- `apdev-*`(task3 연습 인프라)는 손대지 않았다.
