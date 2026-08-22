@@ -73,5 +73,18 @@ grafana:
       searchNamespace: ALL
 
 prometheusOperator:
+  # helm 4.2.1 은 WaitForDelete 회귀(helm/helm#32214, #32224)로,
+  # hook-delete-policy: before-hook-creation 이 달린 훅이 있으면 훅 Job 을 만들지도
+  # 못하고 --timeout 전체를 소진한다(= install 이 조용히 멈춘 것처럼 보인다).
+  # 이 차트의 훅은 admission webhook certgen Job 2개뿐이라 끄면 훅이 0개가 된다.
+  #
+  # tls 도 같이 꺼야 한다 — admissionWebhooks 만 끄면 operator Deployment 가
+  # certgen 이 만들던 admission 시크릿을 optional:false 로 계속 마운트해서
+  # ContainerCreating 에서 영영 멈춘다. 끄면 operator web 은 :8080 평문이 된다.
+  # 확인: helm template ... | grep -c 'helm.sh/hook:' → 0
+  admissionWebhooks:
+    enabled: false
+  tls:
+    enabled: false
   nodeSelector:
     skills/node: addon
