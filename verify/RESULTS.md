@@ -591,3 +591,82 @@ recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
 하드코딩         계정 ID·개인 IP 제거 (sts get-caller-identity 로 대체)
 계정             17개 리전 스윕 — 검증 리소스 잔재 0 (apdev-* 만 잔존, 무접촉)
 ```
+
+---
+
+# 2026-08-22 — `recipes/k8s` · `recipes/cncf` EKS 실검증
+
+검증 클러스터:
+- **`skills-eks`** (ap-northeast-2, EKS 1.35) — 카드의 `k8s/_cluster/cluster.yaml` 로 직접 생성.
+  managed nodegroup app/addon + 나중에 `maxPodsPerNode: 110` 인 `big` 추가.
+- **`skills-cni`** (ap-northeast-1, EKS 1.35) — CNI 를 갈아엎는 calico/cilium 전용 별도 클러스터.
+
+## 검증 방식
+
+카드는 **현장에서 한 파일씩 고쳐 apply 하는 참조 템플릿**이다. 그래서
+`kubectl apply -f <dir>/` 로 한 번에 넣는 것은 검증 목표가 아니다.
+파일 단위 server-side dry-run → 실제 기능 동작(요청/스케일/로그/트레이스 도달)까지 확인했다.
+
+## 기능 검증 완료
+
+| 대상 | 확인한 것 |
+|---|---|
+| k8s ingress-alb / nlb / gateway-alb | curl 200, TargetGroupBinding 에 파드 IP 2개 등록 |
+| k8s storage (EBS/EFS) | 암호화 gp3 마운트·읽기쓰기, EFS PVC RWX Bound |
+| k8s identity (IRSA) | assumed-role 확인, S3 허용 / EC2 거부 |
+| k8s scaling (HPA) | 396% → 2→4→8→10 |
+| k8s netpol | deny → allow → re-deny |
+| k8s logging (Fluent Bit → CW) | 스트림 생성·레코드 도달 |
+| Karpenter | t3.small on-demand 80초, consolidation 180초 |
+| kyverno | validate/mutate/generate/exception 전부 동작, autogen 규칙 확인 |
+| external-secrets | SecretsManager·ParameterStore → Secret, template/find/extract, PushSecret |
+| keda | SQS 0→5→0, cron, cpu/memory(behavior), prometheus, ScaledJob 12건 |
+| prometheus | ServiceMonitor 타깃 up=1, PrometheusRule 5개 로드, record 룰 평가 |
+| grafana | 데이터소스 3종 등록, 대시보드 5패널, Prometheus health OK |
+| loki + alloy | cluster/level 라벨, JSON 파싱, `/health` drop |
+| argocd | Application(directory/helm/kustomize/multi-source), ApplicationSet(list/git), AppProject 제약 |
+| istio | prefix/exact 라우팅, 카나리 90:10(49/11), 헤더 라우팅, fault injection, mTLS STRICT, AuthorizationPolicy |
+| falco | 커스텀 룰 3종 발동, JSON 출력, k8s 메타 |
+| opentelemetry | 자동계측 주입 → ADOT → **X-Ray 트레이스 도달**, agent DaemonSet, sidecar CR |
+| jaeger | 수동 Deployment / Operator CR 양쪽 OTLP 수신·조회 |
+| fluentd | CW 로그그룹·파드별 스트림, 스키마 정확히 일치 |
+| crossplane | XR → **실제 S3 버킷 + DynamoDB 테이블 생성** |
+| keycloak | ALB 경유 OIDC discovery + admin 토큰 발급 |
+| calico | policy-only 설치, 정책 전/후 200 → 200·차단 전환, GlobalNetworkPolicy |
+| cilium | ❌ **실패** — 아래 참조 |
+
+## 이번에 고친 치명적 결함 (전부 실증)
+
+1. **eksctl `metadata.tags.Name`** → 컨트롤플레인 생성이 `Duplicate key(s) in resource tags: [Name]` 로 실패
+2. **Gateway API + LBC** → `TargetGroupConfiguration` 없으면 ALB 가 안 뜬다 (`targetType: ip` 필수)
+3. **Fluent Bit** `Merge_Log_Key` / `Whitelist_key` → 로그가 조용히 0바이트
+4. **VAP 바인딩 누락** → 정책이 무동작
+5. **EKS 기본 StorageClass 없음** → `storageClassName` 생략 PVC 영구 Pending
+6. **t3.medium 파드 17개 한계** → `Too many pods`. prefix delegation **만으로는 안 늘어난다**;
+   `maxPodsPerNode: 110` 을 노드그룹에 같이 줘야 110 이 된다(실측)
+7. **kyverno Enforce 정책을 클러스터 전역** → cert-manager/jaeger/istio helm install 과 rollout restart 전부 거부
+8. **kyverno mutate 는 되돌아가지 않는다** → autogen 으로 Deployment 에 nodeSelector 영구 기록
+9. **ESO helm 릴리스명이 SA 이름에 붙는다** → IRSA 가 엉뚱한 SA 에 달려 노드 role 폴백(Store 는 `Valid` 로 보임)
+10. **PushSecret 은 SecretBinary 로 쓴다** + 필요 IAM 7종
+11. **KEDA ScaledObject 를 Deployment 보다 먼저** 만들면 영구 고장
+12. **NetworkPolicy 잔재** → Prometheus 스크레이프·Istio 게이트웨이가 조용히 전멸
+13. **Grafana `isDefault` 충돌** → 데이터소스 프로비저닝 전체가 500 (파일은 정상 기록됨)
+14. **ArgoCD targetRevision 브랜치 불일치** → `SYNC=Unknown` 인데 `HEALTH=Healthy` 로 위장
+15. **NLB cross-zone 기본 꺼짐** → 게이트웨이 파드 1개면 요청 2/3 타임아웃
+16. **ADOT 이미지 tag 미지정** → ImagePullBackOff / `telemetry.metrics.address` 제거된 문법 → CrashLoop
+17. **fluentd** `use_tag_as_stream false` 도 "설정한 것" / `log_stream_name_key` 대상 키 없으면 전량 폐기
+18. **crossplane** Provider ClusterRole 에 ProviderConfig 그룹 권한 없음 → 컨트롤러 완전 침묵
+19. **crossplane** Namespaced XRD 는 `*.aws.m.upbound.io` MR 만 조립 가능 / `ClusterProviderConfig` 필요 /
+    string transform 에 `type: Format` 필수
+20. **Keycloak** HTTP ALB 로는 `403 HTTPS required`
+21. **calico** helm 설치 전 `operator-crds.yaml` 선행 필요 / `destination.ports` 는 컨테이너 포트 /
+    삭제는 apiserver·goldmane·whisker → installation 순서
+
+## ❌ cilium — 검증 실패를 그대로 남긴다
+
+공식 문서 그대로의 값(`cni.chainingMode=aws-cni`, `cni.exclusive=false`,
+`enableIPv4Masquerade=false`, `routingMode=native`)으로 설치했더니 **파드 egress 가 전멸**했다.
+CoreDNS 가 VPC 리졸버로 못 나가 `0/1` 무한 재시작, 파드 안에서 `apk add` 조차 실패.
+`endpointRoutes.enabled`, `ipam.mode=delegated-plugin`, `--local-router-ipv4` 를 더해도 그대로.
+게다가 `helm uninstall` 후에도 노드의 `05-cilium.conflist` 가 남아 **새 파드가 아예 안 뜬다**.
+→ 카드에 증상·응급 복구(hostNetwork DaemonSet)·대안을 적고 **대회 중 설치 금지**로 표기했다.
