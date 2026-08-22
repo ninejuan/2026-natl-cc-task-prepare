@@ -111,3 +111,43 @@ kubectl -n logging get sa fluent-bit -o jsonpath='{.metadata.annotations.eks\.am
 - **`auto_create_group true`** 가 없으면 로그 그룹이 없다고 실패한다. 또는 미리 `create-log-group` 을 해둔다.
 - **pos DB 파일**(`/var/log/flb_*.db`)이 hostPath 에 있어야 재시작 후 중복 수집이 없다.
 - 로그 그룹 이름이 과제지 지정과 정확히 같아야 한다. `/` 로 시작하는 형태에 주의.
+
+## ★ 실검증 (EKS 1.35, aws-for-fluent-bit 2.32.5 / Fluent Bit 1.9.10, 2026-08-22)
+
+IRSA role 을 만들어 붙이고 앱 로그를 실제로 CloudWatch 까지 보냈다.
+
+| 확인 | 결과 |
+|---|---|
+| DaemonSet | 6/6 Running |
+| 로그그룹 | `auto_create_group true` 로 `/skills/eks/app` 자동 생성 |
+| 로그스트림 | `fluentbit-<컨테이너로그경로>` 로 파드별 생성 |
+| `/health` 제외 | ✅ `grep Exclude path ^/health$` 로 전량 제외 확인 |
+| 필드 정리 | ✅ `timestamp/method/path/status_code/client_ip` 만 남음 |
+
+### 고친 것 1 — `Merge_Log_Key` 가 뒤의 필터를 전부 무력화한다
+원래 `Merge_Log_Key log_processed` 가 있었다. 그러면 파싱된 필드가 **`log_processed` 아래 중첩**된다:
+```
+{"stream":"stdout","log_processed":{"timestamp":...,"path":"/api/x",...},"kubernetes":{...}}
+```
+- `grep Exclude path` → 최상위에 `path` 가 없으니 **`/health` 제외가 아예 안 걸린다**
+- `record_modifier` 의 allowlist → 최상위에 그 키들이 없으니 **전 필드가 삭제되어 빈 레코드**가 되고
+  CloudWatch 는 빈 레코드를 버린다 → **로그그룹·스트림은 생기는데 `storedBytes` 가 0**
+
+증상이 최악이다. 스트림이 보이니 "설정은 됐는데 로그만 안 온다"로 보이고, fluent-bit 로그에 에러가 하나도 안 찍힌다.
+→ `Merge_Log_Key` 를 빼서 필드를 최상위로 올렸다.
+
+### 고친 것 2 — `Whitelist_key` 는 무동작, `Allowlist_key` 를 써야 한다
+`record_modifier` 에 `Whitelist_key` 를 주면 **조용히 무시된다**(에러 없음). 필드가 하나도 안 걸러진다.
+`Allowlist_key` 로 바꾸자 즉시 정확히 5개 필드만 남았다:
+```json
+{"timestamp":"A1","method":"POST","path":"/api/book","status_code":201,"client_ip":"10.2.2.2"}
+```
+
+### 디버깅 팁 (막혔을 때)
+출력 직전 레코드 모양을 보는 게 제일 빠르다. `[OUTPUT] Name stdout / Match app.*` 를 임시로 추가하고
+`kubectl -n logging logs ds/fluent-bit` 를 본다. 중첩 여부가 한눈에 보인다.
+
+### 그 밖에
+- `Path /var/log/containers/app-*_app_*.log` 라 **파드 이름이 `app-` 으로 시작**해야 수집된다. 이름을 바꾸면 같이 고쳐라.
+- `Mem_Buf_Limit 10MB` — 접근로그가 폭주하면 `[warn] [input] tail.0 paused (mem buf overlimit)` 가 뜨고 그동안 유실된다. 트래픽 많으면 올려라.
+- CloudWatch 조회는 `filter-log-events` 보다 `get-log-events --log-stream-name` 이 확실하다(실검증 중 filter 쪽이 못 찾는 경우가 있었다).

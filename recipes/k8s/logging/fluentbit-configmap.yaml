@@ -31,7 +31,13 @@ data:
         Match             app.*
         Kube_Tag_Prefix   app.var.log.containers.
         Merge_Log         On
-        Merge_Log_Key     log_processed
+        # ★ Merge_Log_Key 를 주면 파싱된 필드가 그 키 "아래에 중첩"된다.
+        #   그러면 뒤의 grep/record_modifier 는 최상위 키만 보므로 전부 헛돈다(실검증):
+        #     - grep Exclude path  → 최상위에 path 가 없어 /health 제외가 아예 안 걸림
+        #     - record_modifier Whitelist_key → 최상위에 해당 키가 없어 전 필드 삭제
+        #       → 빈 레코드가 되고 CloudWatch 는 빈 레코드를 버린다
+        #       → 로그그룹·스트림은 생기는데 storedBytes 가 0 (원인 찾기 최악)
+        #   Merge_Log_Key 를 빼면 필드가 최상위로 올라와 두 필터가 의도대로 동작한다.
         Keep_Log          Off
         K8S-Logging.Parser Off
         K8S-Logging.Exclude Off
@@ -54,11 +60,16 @@ data:
     [FILTER]
         Name              record_modifier
         Match             app.*
-        Whitelist_key     timestamp
-        Whitelist_key     method
-        Whitelist_key     path
-        Whitelist_key     status_code
-        Whitelist_key     client_ip
+        # ★ Whitelist_key 는 이 버전(aws-for-fluent-bit 2.32.5 / Fluent Bit 1.9.10)에서
+        #   조용히 무시된다(실검증) — 에러도 안 내고 필드가 하나도 안 걸러진다.
+        #   Allowlist_key 를 써야 한다.
+        # ★ 여기 없는 키는 kubernetes 메타데이터(pod_name 등)까지 전부 사라진다.
+        #   "어느 파드 로그인지"를 채점이 본다면 kubernetes 도 Allowlist 에 넣어라.
+        Allowlist_key     timestamp
+        Allowlist_key     method
+        Allowlist_key     path
+        Allowlist_key     status_code
+        Allowlist_key     client_ip
 
     [OUTPUT]
         Name              cloudwatch_logs
