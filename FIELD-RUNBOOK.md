@@ -144,6 +144,24 @@ bin/mark-self.sh --foul     # 금지 조항 위반 여부만 검사
 - **vpc-cni 를 `update-addon` 으로 고칠 때 `--service-account-role-arn` 을 빼지 마라.**
   aws-node 의 IRSA 어노테이션이 지워져 CrashLoopBackOff → 새 파드가 IP 를 못 받아 클러스터가 마비된다.
 
+## 쿼리를 직접 짜야 할 때 (문법이 기억 안 날 때 여는 곳)
+
+| 무엇 | 어디 |
+|---|---|
+| PromQL (CPU/메모리/에러율/p95/알림식/레코딩룰) | `recipes/cncf/prometheus/PROMQL.md` |
+| LogQL (Loki — 셀렉터/파서/unwrap/메트릭쿼리) | `recipes/cncf/loki/README.md#logql` |
+| CloudWatch Logs Insights | `recipes/aws/tier3/cloudwatch/logs-insights.md` |
+| CloudWatch Metric Math·이상탐지 | `recipes/aws/tier3/cloudwatch.md` |
+| Flink SQL (Managed Flink Studio) | `recipes/topics/realtime-analytics/` |
+| Athena / Glue SQL | `recipes/aws/analytics/athena.md` |
+| DynamoDB PartiQL | `recipes/aws/tier1/dynamodb.md` |
+| Step Functions ASL (intrinsic, ResultSelector) | `recipes/topics/workflow/` |
+| `aws --query` JMESPath | `_analysis/MARK-PATTERNS.md` (채점 스크립트가 쓰는 문체) |
+
+**공통 요령**: 이름을 추측하지 말고 **먼저 조회**한다.
+PromQL 은 `/api/v1/label/__name__/values`, LogQL 은 `/loki/api/v1/labels`,
+Logs Insights 는 `fields @message | limit 5` 로 원문부터 보고 필드 이름을 맞춘다.
+
 ## 참고
 
 - 채점 방식 상세: `_analysis/MARK-PATTERNS.md`
