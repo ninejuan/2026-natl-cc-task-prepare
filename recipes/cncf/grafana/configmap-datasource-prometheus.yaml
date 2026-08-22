@@ -1,4 +1,26 @@
 # labelValue 는 문자열 "1" 이어야 사이드카가 읽는다.
+#
+# ★★★ kube-prometheus-stack 을 깔았다면 **isDefault: true 를 넣지 마라**(실검증).
+#   차트가 이미 `Prometheus`(uid: prometheus) 를 isDefault 로 프로비저닝해 두었기 때문에
+#   default 가 둘이 되고, Grafana 프로비저닝이 통째로 실패한다:
+#
+#     grafana:  level=error msg="Failed to provision data sources"
+#               error="... Only one datasource per organization can be marked as default"
+#     sidecar:  ERROR Max retries exceeded for URL .../api/admin/provisioning/datasources/reload
+#               (too many 500 error responses)
+#
+#   함정인 이유: 사이드카는 파일을 **정상적으로 써 넣는다**.
+#   `ls /etc/grafana/provisioning/datasources/` 에는 prometheus.yaml 이 멀쩡히 보이는데
+#   `GET /api/datasources` 에는 안 나온다. 그리고 **all-or-nothing** 이라
+#   같이 넣은 Loki·CloudWatch 데이터소스까지 전부 등록이 안 된다.
+#
+#   진단 3종:
+#     kubectl -n monitoring logs <grafana-pod> -c grafana-sc-datasources | grep -i error
+#     kubectl -n monitoring logs <grafana-pod> -c grafana        | grep -i provision
+#     curl -s -u admin:$PW localhost:3000/api/datasources | jq '.[].name'
+#
+# ★ 이미 있는 데이터소스를 갈아끼우려면 uid 를 같게 주면 덮어쓴다(아래처럼 uid: prometheus).
+#   대시보드 JSON 의 panels[].datasource.uid 도 **이 uid 와 대소문자까지 같아야** 패널이 그려진다.
 apiVersion: v1
 kind: ConfigMap
 metadata:
@@ -11,9 +33,10 @@ data:
     apiVersion: 1
     datasources:
       - name: Prometheus
+        uid: prometheus          # ★ 대시보드 JSON 의 datasource.uid 와 일치시킬 것
         type: prometheus
         access: proxy
         url: http://prometheus-operated.monitoring.svc:9090
-        isDefault: true
+        # isDefault: true        # ★ 차트가 이미 default 를 잡고 있으면 켜지 마라(위 설명)
         jsonData:
           timeInterval: 15s

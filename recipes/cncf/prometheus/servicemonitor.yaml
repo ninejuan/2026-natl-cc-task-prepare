@@ -1,3 +1,25 @@
+# ★★ NetworkPolicy 가 걸린 네임스페이스면 스크레이프가 **조용히 실패한다**(실검증).
+#   ServiceMonitor 는 정상적으로 타깃을 찾아내지만 상태가 이렇게 된다:
+#     targets: health=down, lastError="Get http://<podIP>:9090/metrics: context deadline exceeded"
+#     up{job="app-metrics"} == 0
+#   default-deny-ingress 하나만 있어도 이렇게 된다. monitoring 네임스페이스에서 오는
+#   메트릭 포트를 열어 줘야 한다:
+#
+#     kind: NetworkPolicy            # app 네임스페이스에 추가
+#     spec:
+#       podSelector: {}
+#       policyTypes: [Ingress]
+#       ingress:
+#         - from:
+#             - namespaceSelector:
+#                 matchLabels:
+#                   kubernetes.io/metadata.name: monitoring
+#           ports: [{protocol: TCP, port: 9090}]
+#
+#   확인(실검증한 방법):
+#     kubectl -n monitoring port-forward svc/<prom-svc> 19090:9090 &
+#     curl -s 'localhost:19090/api/v1/targets?state=active' | jq '.data.activeTargets[]
+#       | select(.scrapePool|test("app")) | {health,lastError}'
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:

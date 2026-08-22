@@ -65,6 +65,17 @@ addons:
     version: latest
     resolveConflicts: overwrite
 
+# ★★ t3.medium 은 **파드 17개**가 한계다(실검증: allocatable.pods=17).
+#   VPC CNI 는 ENI 개수 × IP 수로 max-pods 를 정하기 때문에 CPU/메모리가 텅 비어 있어도
+#   `0/N nodes are available: N Too many pods` 로 스케줄이 막힌다.
+#   DaemonSet(kube-proxy·aws-node·node-exporter·alloy·falco…)만으로 6~8개가 이미 나간다.
+#   CNCF 스택을 여러 개 올릴 계획이면 셋 중 하나를 택하라:
+#     1) 노드 수를 늘린다 (가장 빠름)
+#     2) m5.large 이상으로 올린다 (t3.large=35, m5.large=29)
+#     3) prefix delegation 을 켠다 → max-pods 110
+#        addons 의 vpc-cni 에 configurationValues: '{"env":{"ENABLE_PREFIX_DELEGATION":"true"}}'
+#        ※ 이미 떠 있는 노드의 max-pods 는 안 바뀐다. 노드를 새로 띄워야 적용된다.
+#   확인: kubectl get nodes -o custom-columns=NODE:.metadata.name,MAXPODS:.status.allocatable.pods
 managedNodeGroups:
   # 앱용. 채점이 kubectl get nodes -l 로 찾으므로 labels 를 반드시 채운다.
   - name: app

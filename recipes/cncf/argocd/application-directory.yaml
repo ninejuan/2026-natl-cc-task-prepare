@@ -1,3 +1,15 @@
+# ★★ targetRevision 은 **레포의 실제 기본 브랜치 이름**이어야 한다(실검증).
+#   레포가 master 인데 main 이라고 쓰면 Application 이 이렇게 죽는다:
+#     status.conditions: ComparisonError
+#       "failed to generate manifest ... unable to resolve 'main' to a commit SHA"
+#     SYNC=Unknown / HEALTH=Healthy  ← Healthy 라서 성공한 것처럼 보인다. 함정.
+#   확실하지 않으면 `targetRevision: HEAD` 로 두면 기본 브랜치를 따라간다.
+#   같은 이유로 ApplicationSet 의 git generator `revision:` 도 같이 틀린다.
+#
+# ★ 진단 한 줄:
+#   kubectl -n argocd get app -o custom-columns=\
+#     NAME:.metadata.name,SYNC:.status.sync.status,HEALTH:.status.health.status
+#   → SYNC 가 Synced 인지를 보라. HEALTH 만 보면 안 된다.
 apiVersion: argoproj.io/v1alpha1
 kind: Application
 metadata:

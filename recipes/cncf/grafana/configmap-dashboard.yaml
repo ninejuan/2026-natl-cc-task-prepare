@@ -25,7 +25,7 @@ data:
           "type": "timeseries",
           "title": "Node CPU Usage",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": { "unit": "percent", "min": 0, "max": 100 },
             "overrides": []
@@ -43,7 +43,7 @@ data:
           "type": "timeseries",
           "title": "Node Memory Usage",
           "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": { "unit": "percent", "min": 0, "max": 100 },
             "overrides": []
@@ -61,7 +61,7 @@ data:
           "type": "stat",
           "title": "Pod Status",
           "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "graphMode": "area",
             "colorMode": "value",
@@ -80,7 +80,7 @@ data:
           "type": "stat",
           "title": "Ready Pods",
           "gridPos": { "h": 4, "w": 6, "x": 12, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "options": {
             "graphMode": "none",
             "colorMode": "value",
@@ -98,7 +98,7 @@ data:
           "type": "timeseries",
           "title": "HTTP Response Time",
           "gridPos": { "h": 8, "w": 24, "x": 0, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "Prometheus" },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
           "fieldConfig": {
             "defaults": { "unit": "s" },
             "overrides": []

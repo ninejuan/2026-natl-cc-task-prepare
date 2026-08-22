@@ -1,5 +1,23 @@
 # helm upgrade --install alloy grafana/alloy -n monitoring -f values-alloy.yaml
 # Promtail 후속. 노드마다 떠서 /var/log/pods 를 읽어 Loki 로 밀어넣는다.
+#
+# 실검증 결과(그대로 동작함):
+#   labels:      cluster / container / filename / job / level / namespace / pod / stream
+#   level 값:    info, error … (stage.labels 로 승격됨)
+#   /health 로그: JSON 으로 찍는 파드에서는 정상적으로 drop 됨
+#
+# ★ 단, stage.drop 의 source 는 **stage.json 이 뽑아낸 필드**다.
+#   JSON 이 아닌 평문 로그(nginx access log 등)는 path 가 안 뽑히므로 **drop 되지 않고 통과한다.**
+#   "왜 /health 가 아직 보이지" 의 답은 대개 이것 — 다른 파드의 평문 로그다.
+#   평문까지 버리려면 stage.drop 에 expression 을 쓴다:
+#     stage.drop { expression = ".*GET /health.*" }
+#
+# ★ 확인은 Loki HTTP API 로 하는 게 가장 빠르다(Grafana UI 안 열어도 된다):
+#     kubectl -n monitoring port-forward svc/loki 13100:3100 &
+#     curl -s localhost:13100/loki/api/v1/labels | jq
+#     curl -s localhost:13100/loki/api/v1/label/level/values | jq
+#     curl -sG localhost:13100/loki/api/v1/query_range \
+#       --data-urlencode 'query={namespace="app",level="error"}' | jq '.data.result[0].values[0]'
 
 controller:
   type: daemonset
