@@ -6,8 +6,17 @@
 mode: deployment
 replicaCount: 1
 
+# ★★ repository 만 바꾸면 **반드시 ImagePullBackOff 가 난다**(실검증).
+#   helm 은 tag 를 안 주면 차트의 appVersion(예: 0.158.0)을 그대로 태그로 쓴다.
+#   그 태그는 업스트림 otel/opentelemetry-collector-contrib 의 버전 체계라
+#   ADOT 이미지(v0.49.0 형식)에는 존재하지 않는다:
+#     Failed to pull image "public.ecr.aws/aws-observability/aws-otel-collector:0.158.0": not found
+#   → repository 를 바꾸면 **tag 도 반드시 같이** 지정한다.
+#   최신 태그 확인:
+#     curl -s https://api.github.com/repos/aws-observability/aws-otel-collector/releases/latest | jq -r .tag_name
 image:
   repository: public.ecr.aws/aws-observability/aws-otel-collector   # awsxray/awsemf 익스포터 포함
+  tag: "v0.49.0"                                                    # ★ 생략 금지
 
 serviceAccount:
   create: true
@@ -60,7 +69,16 @@ config:
   service:
     telemetry:
       metrics:
-        address: 0.0.0.0:8888
+        # ★ `address: 0.0.0.0:8888` 는 **더 이상 안 먹는다**(실검증, ADOT v0.49 / collector 0.12x+).
+        #   그대로 쓰면 파드가 CrashLoopBackOff 되고 로그에 이렇게 뜬다:
+        #     'migration.MetricsConfigV030' has invalid keys: address
+        #   아래 readers 문법으로 바꿔야 한다.
+        readers:
+          - pull:
+              exporter:
+                prometheus:
+                  host: 0.0.0.0
+                  port: 8888
     pipelines:
       traces:
         receivers: [otlp]

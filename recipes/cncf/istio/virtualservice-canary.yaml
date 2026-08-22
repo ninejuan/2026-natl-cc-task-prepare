@@ -1,5 +1,12 @@
 # 가중치 트래픽 분할. weight 합이 100 이어야 한다.
 # 검증: for i in $(seq 1 100); do curl -s http://$GW/version; echo; done | sort | uniq -c
+#
+# 실검증: 60회 요청 → v1 49 / v2 11 (90:10 설계값에 근접). 30회 미만이면 편차가 커서 판단이 안 된다.
+#
+# ★ 같은 gateway + hosts 를 쓰는 VirtualService 가 둘 이상이면 하나만 먹는다.
+#   이전 단계에서 만든 VS 를 지우고 적용하라. 안 지우면 "왜 가중치가 안 먹지" 가 된다.
+#     kubectl -n app get vs
+#     kubectl -n app delete vs app
 apiVersion: networking.istio.io/v1
 kind: VirtualService
 metadata:
