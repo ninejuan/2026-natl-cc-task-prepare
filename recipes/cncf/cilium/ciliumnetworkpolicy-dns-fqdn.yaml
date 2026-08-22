@@ -23,10 +23,20 @@ spec:
             dns:
               - matchPattern: "*"
     # ② 허용할 도메인
+    #
+    # ★★ matchPattern 의 `*` 는 **점(.)을 넘지 않는다**(실검증).
+    #   `*.amazonaws.com` 는 `s3.ap-northeast-1.amazonaws.com`(라벨 3개)을 **매칭하지 않는다.**
+    #   → 허용한 줄 알았는데 타임아웃난다. 라벨 수에 맞춰 `*` 를 늘리거나 matchName 을 쓴다.
+    #     matchPattern: "*.*.amazonaws.com"   → s3.ap-northeast-1.amazonaws.com  매칭됨(실검증 307)
+    #     matchName:    "s3.ap-northeast-1.amazonaws.com"  → 정확 일치(실검증 307)
+    #
+    # ★ 동작 확인은 FQDN 캐시를 본다:
+    #     kubectl -n kube-system exec ds/cilium -c cilium-agent -- cilium-dbg fqdn cache list
+    #   조회(lookup)와 연결(connection) 기록이 함께 남는다.
     - toFQDNs:
         - matchName: "dynamodb.ap-northeast-2.amazonaws.com"
         - matchPattern: "*.s3.ap-northeast-2.amazonaws.com"
-        - matchPattern: "*.amazonaws.com"
+        - matchPattern: "*.*.amazonaws.com"
       toPorts:
         - ports:
             - port: "443"

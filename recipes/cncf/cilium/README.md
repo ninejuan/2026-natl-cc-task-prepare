@@ -6,40 +6,56 @@ eBPF 기반 네트워킹·보안·관측. **표준 NetworkPolicy 로 안 되는 
 
 ---
 
-## 🚨 실검증 결과 — 대회 중에는 설치하지 마라
+## 실검증 결과 (EKS 1.35 / Cilium 1.20.1 / aws-cni 체이닝)
 
-**깨끗한 EKS 1.35 클러스터(ap-northeast-1, 노드 2대)에서 Cilium 1.20.1 을 aws-cni 체이닝으로
-설치했더니 클러스터 전체 통신이 끊겼다.** 아래는 실제로 관측한 것이다.
+**깨끗한 클러스터에서는 공식 문서 그대로 잘 동작한다.** 아래 4가지를 실제로 확인했다.
 
-**증상 1 — 파드 egress 전멸.** CoreDNS 가 VPC 리졸버로 못 나가서 `0/1` 상태로 무한 재시작:
-
+```bash
+helm install cilium cilium/cilium --version 1.20.1 -n kube-system \
+  --set cni.chainingMode=aws-cni --set cni.exclusive=false \
+  --set enableIPv4Masquerade=false --set routingMode=native
 ```
-[ERROR] plugin/errors: ... HINFO: read udp 192.168.107.49:52680->192.168.0.2:53: i/o timeout
-```
 
-파드 안에서 `apk add curl` 조차 안 된다(그래서 "정책이 막았나" 로 착각하기 쉽다 — 애초에
-컨테이너에 curl 이 설치되지 못한 것이다). `ping 192.168.0.2`, IMDS 접근 전부 실패.
-
-시도했지만 **해결되지 않은** 조합:
-
-| 시도한 값 | 결과 |
+| 정책 | 결과 |
 |---|---|
-| 카드 기본값 (chainingMode: aws-cni, exclusive: false, routingMode: native, masquerade off) | 통신 끊김 |
-| \+ `endpointRoutes.enabled: true` | 그대로 |
-| \+ `ipam.mode: delegated-plugin`, `--local-router-ipv4=169.254.11.1`, `endpointHealthChecking.enabled: false` | 그대로 (`cilium-dbg status` 는 `IPAM: delegated to plugin` / `CNI Chaining: aws-cni` 로 정상 표시) |
+| L3/L4 (`ciliumnetworkpolicy-l3-l4.yaml`) | frontend 200 / 그 외 타임아웃 |
+| L7 HTTP (`ciliumnetworkpolicy-l7-http.yaml`) | `GET /health` 10/10 **200**, `GET /v1/book/` 10/10 **200**, `GET /admin/` 5/5 **403**, `DELETE /v1/book/` **403** |
+| FQDN (`ciliumnetworkpolicy-dns-fqdn.yaml`) | 허용 도메인 307, `google.com` 타임아웃, `cilium-dbg fqdn cache list` 에 조회 기록 |
+| Clusterwide | 클러스터 내부 200 / 외부 타임아웃, 해제 후 즉시 복구 |
 
-**증상 2 — 제거해도 안 돌아온다.** `helm uninstall cilium` 을 해도 노드의
-`/etc/cni/net.d/05-cilium.conflist` 가 남아서 **새 파드가 아예 안 뜬다**:
+`cilium-dbg status` 확인값: `CNI Chaining: aws-cni`, `Routing: Native`, `Masquerading: Disabled`,
+`KubeProxyReplacement: False`, `Proxy Status: OK ... Envoy: external`.
+
+### 🚨 그런데 여기서 클러스터를 한 번 죽였다 — 원인은 "CNI 갈아타기"
+
+처음 시도는 **Calico 를 깔았다 지운 노드 위에** Cilium 을 설치한 것이었다. 결과:
+
+- CoreDNS 가 VPC 리졸버로 못 나가 `0/1` 무한 재시작
+  (`HINFO: read udp ...->192.168.0.2:53: i/o timeout`)
+- 파드 안에서 `apk add curl` 조차 실패 → **"정책이 막았나" 로 착각하기 딱 좋다**
+- `endpointRoutes.enabled`, `ipam.mode=delegated-plugin`, `--local-router-ipv4` 를 더해도 그대로
+
+**노드그룹을 새로 만들어 옛 노드를 버리자마자 같은 값으로 정상 동작했다.**
+즉 문제는 Cilium 이 아니라 **이전 CNI 플러그인이 노드에 남긴 잔재**였다.
+
+> **규칙: CNI 정책 엔진을 바꿀 때는 노드를 교체한다.** helm uninstall 만으로는 안 지워진다.
+> ```bash
+> eksctl create nodegroup -f new-ng.yaml            # 새 노드그룹
+> eksctl delete nodegroup --cluster <CL> --name <old> --drain=false
+> ```
+
+### 🚨 제거해도 안 돌아온다 — `05-cilium.conflist` 잔재
+
+`helm uninstall cilium` 후에도 노드에 CNI 설정이 남아 **새 파드가 아예 안 뜬다**:
 
 ```
 Failed to create pod sandbox: plugin type="cilium-cni" failed (add):
   unable to connect to Cilium agent: ... dial unix /var/run/cilium/cilium.sock: no such file or directory
 ```
 
-CNI 가 죽었으니 복구용 파드도 못 띄운다. **hostNetwork 로 우회**해야 한다:
+CNI 가 죽었으니 복구용 파드도 못 띄운다. **hostNetwork 로 우회**한다:
 
 ```yaml
-# 노드에 남은 cilium conflist 를 지우는 응급 DaemonSet (hostNetwork 라 CNI 없이 뜬다)
 apiVersion: apps/v1
 kind: DaemonSet
 metadata: {name: cni-cleanup, namespace: kube-system}
@@ -48,7 +64,7 @@ spec:
   template:
     metadata: {labels: {app: cni-cleanup}}
     spec:
-      hostNetwork: true
+      hostNetwork: true          # ★ CNI 를 안 거치므로 CNI 가 망가져도 뜬다
       tolerations: [{operator: Exists}]
       containers:
         - name: c
@@ -61,28 +77,23 @@ spec:
           hostPath: {path: /etc/cni/net.d}
 ```
 
-conflist 를 지워도 노드에 남은 eBPF/iptables 상태 때문에 완전히는 안 돌아왔다.
-**확실한 복구는 노드 교체**다:
+conflist 를 지워도 eBPF/iptables 잔재까지는 안 없어진다. **확실한 복구는 노드 교체.**
 
-```bash
-aws eks update-nodegroup-version --cluster-name <CL> --nodegroup-name <NG> --force
-```
-
-### 그래서 현장 판단
+### 현장 판단
 
 | 요구 | 답 |
 |---|---|
-| 표준 NetworkPolicy (L3/L4) | VPC CNI 내장 정책. 설치할 것 없음 → [`../../k8s/netpol/`](../../k8s/netpol/) |
-| 전역 정책 / order / Log 액션 | Calico policy-only → [`../calico/`](../calico/) (실검증 통과) |
-| HTTP 경로·메서드 단위(L7) | 과제지가 **Cilium 을 명시**할 때만. 시간이 남고 되돌릴 여유가 있을 때만 손댄다 |
+| 표준 NetworkPolicy (L3/L4) | VPC CNI 내장 정책 → [`../../k8s/netpol/`](../../k8s/netpol/). 설치할 것 없음 |
+| 전역 정책 / order / Log 액션 | Calico policy-only → [`../calico/`](../calico/) |
+| HTTP 경로·메서드 단위(L7) | Cilium (검증 통과) 또는 Istio AuthorizationPolicy |
+| FQDN 기반 egress 제한 | **Cilium 만 된다** (검증 통과) |
 
-과제지가 L7 정책을 요구하는데 Cilium 이 위험하다면, **Istio AuthorizationPolicy**
-([`../istio/authorizationpolicy.yaml`](../istio/authorizationpolicy.yaml))가 같은 요구를
-훨씬 안전하게 만족시킨다 — 사이드카만 붙이면 되고 CNI 를 안 건드린다(실검증 통과).
+CNI 를 아직 안 건드린 클러스터라면 Cilium 체이닝은 안전하게 넣을 수 있다.
+이미 다른 정책 엔진을 깔았다 지운 클러스터라면 **먼저 노드를 갈아라.**
+CNI 를 건드릴 여유가 없으면 Istio AuthorizationPolicy
+([`../istio/authorizationpolicy.yaml`](../istio/authorizationpolicy.yaml))로 L7 요구를 대신할 수 있다.
 
-아래 내용은 그럼에도 Cilium 을 써야 할 때를 위한 것이다.
 
----
 
 ## ★ EKS 설치는 두 갈래 — 체이닝을 택하라
 

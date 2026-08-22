@@ -2,15 +2,17 @@
 #
 # VPC CNI 를 그대로 두고 Cilium 을 정책 엔진 + 관측 도구로만 얹는다.
 #
-# ★★★ 경고: 이 값으로 EKS 1.35 + Cilium 1.20.1 에 설치했더니 **파드 egress 가 전멸했다**(실검증).
-#   CoreDNS 가 VPC 리졸버(x.x.0.2:53)로 못 나가서 0/1 무한 재시작.
-#   endpointRoutes.enabled / ipam.mode=delegated-plugin 을 추가해도 복구되지 않았다.
-#   더 나쁜 건 제거해도 노드에 05-cilium.conflist 가 남아 **새 파드가 아예 안 뜬다**는 점이다.
-#   상세한 증상·응급 복구·대안은 README.md 의 "🚨 실검증 결과" 절을 먼저 읽어라.
-#   → 대회에서는 VPC CNI 내장 정책 / Calico policy-only / Istio AuthorizationPolicy 를 쓴다.
+# ★ 실검증: 깨끗한 EKS 1.35 클러스터에서 이 값으로 정상 동작했다
+#   (L3/L4·L7 HTTP·FQDN·Clusterwide 정책 전부 통과 — README.md 의 결과표 참조).
 #
-# "되돌리기 쉽다" 는 말은 **사실이 아니었다.** 아래 값은 과제지가 Cilium 을 명시했을 때의 출발점일 뿐이고,
-# 반드시 검증용 클러스터에서 먼저 확인한 뒤 본 클러스터에 적용하라.
+# ★★★ 단, **다른 CNI 정책 엔진(Calico 등)을 깔았다 지운 노드 위에는 설치하지 마라.**
+#   같은 값으로 설치했더니 파드 egress 가 전멸했다(CoreDNS 가 VPC 리졸버로 i/o timeout,
+#   파드 안에서 apk add 조차 실패). endpointRoutes / ipam delegated-plugin 을 더해도 안 됐고,
+#   **노드그룹을 새로 만들어 옛 노드를 버리자마자 같은 값으로 정상 동작했다.**
+#   → CNI 를 바꿀 때는 노드를 교체한다. helm uninstall 만으로는 노드가 안 깨끗해진다.
+#
+# ★ 그리고 제거해도 /etc/cni/net.d/05-cilium.conflist 가 남아 새 파드가 안 뜬다.
+#   응급 복구(hostNetwork DaemonSet)는 README.md 에 있다.
 
 cni:
   chainingMode: aws-cni

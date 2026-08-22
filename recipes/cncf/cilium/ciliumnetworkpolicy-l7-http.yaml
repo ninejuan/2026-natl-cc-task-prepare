@@ -1,5 +1,20 @@
 # 표준 NetworkPolicy 로는 불가능한 영역. HTTP 메서드·경로 단위로 허용한다.
 # 차단 시 TCP 리셋이 아니라 HTTP 403 이 오는 게 L7 정책이 동작하는 증거다.
+#
+# 실검증(EKS 1.35 / Cilium 1.20.1 체이닝):
+#   GET /health     10/10  200
+#   GET /v1/book/   10/10  200
+#   GET /admin/      5/5   403   ← 목록에 없으면 거부. 403 이 오면 L7 이 동작하는 것
+#   DELETE /v1/book/       403   ← 경로는 맞아도 메서드가 없으면 거부
+#
+# ★★ toPorts.ports.port 는 **컨테이너 포트**다. Service 포트가 아니다(실검증).
+#   Service 가 8080→80 이면 여기에 8080 을 적는 순간 허용 규칙이 아무것도 매칭하지 않아
+#   **허용하려던 트래픽까지 전부 타임아웃**한다. 같은 함정이 Calico·표준 NetworkPolicy 에도 있다.
+#   확인: kubectl -n app get pod -o jsonpath='{.items[0].spec.containers[0].ports}'
+#
+# ★ 200 과 503 이 섞여 나오면 정책이 아니라 **Service 엔드포인트**를 의심하라.
+#   서버가 아닌 파드가 같은 라벨을 달고 있으면 Service 가 그쪽으로도 분배해서 Envoy 가 503 을 낸다
+#   (실검증에서 딱 절반이 503 이었고, 라벨을 떼자 10/10 200 이 됐다).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

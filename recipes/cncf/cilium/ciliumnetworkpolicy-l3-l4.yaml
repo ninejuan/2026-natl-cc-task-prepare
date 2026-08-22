@@ -1,5 +1,8 @@
 # 라벨 기반 L3/L4. 표준 NetworkPolicy 와 같은 일을 하지만 Cilium 문법.
 # 한 클러스터에서 두 종류를 섞으면 둘 다 적용(AND)되어 예상보다 많이 막힌다.
+#
+# 실검증: frontend 라벨 파드 200 / 그 외 파드 타임아웃 (3회 반복 동일).
+# ★ toPorts.ports.port 는 **컨테이너 포트**다. Service 포트를 적으면 전부 막힌다(실검증).
 apiVersion: cilium.io/v2
 kind: CiliumNetworkPolicy
 metadata:

@@ -1,5 +1,10 @@
 # 네임스페이스 스코프가 아닌 클러스터 전역 정책. "클러스터 전체에 기본 차단" 요구에 쓴다.
 # kube-system 은 예외로 둬야 클러스터가 안 죽는다.
+#
+# 실검증: 클러스터 내부 통신 200 유지 / 외부(google.com) 타임아웃 / 정책 삭제 시 즉시 복구.
+# ★ `toEntities: [cluster]` 는 **클러스터 안은 전부 허용**한다는 뜻이다.
+#   "네임스페이스끼리도 막아라" 는 요구면 이 항목을 빼고 네임스페이스별 CNP 로 열어야 한다.
+#   전역 정책만 걸고 파드간 차단을 기대하면 채점에서 그대로 통과해버린다.
 apiVersion: cilium.io/v2
 kind: CiliumClusterwideNetworkPolicy
 metadata:
