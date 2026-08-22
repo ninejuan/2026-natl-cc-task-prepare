@@ -66,3 +66,21 @@ helm upgrade --install argocd argo/argo-cd -n argocd --create-namespace \
 - **CRD가 차트에 포함 안 된 프로젝트가 있다.** Gateway API, Prometheus Operator 일부 구성은 CRD를 따로 넣어야 한다.
 - **`--wait` 는 타임아웃되면 실패로 롤백한다.** LoadBalancer 프로비저닝 때문에 오래 걸릴 수 있으니 `--timeout` 을 넉넉히.
 - **네임스페이스는 `--create-namespace`** 로 만든다. 없으면 설치가 실패한다.
+- **ServiceAccount 이름에 릴리스 이름이 붙는다.** `helm install eso external-secrets/external-secrets`
+  → SA 는 `external-secrets` 가 아니라 `eso-external-secrets`. IRSA 어노테이션을 엉뚱한 SA 에 달면
+  컨트롤러가 조용히 노드 인스턴스 role 로 폴백한다(실검증). 확인:
+  `kubectl -n <ns> get pod -o jsonpath='{.items[0].spec.serviceAccountName}'`
+- **`invalid ownership metadata` = 남아 있는 CRD/webhook.** 이전 설치의 잔재가 helm 소유가 아니라서 난다.
+  ```bash
+  # 방법 1: 소유권을 넘긴다 (데이터 보존)
+  kubectl annotate crd <name> meta.helm.sh/release-name=<rel> meta.helm.sh/release-namespace=<ns> --overwrite
+  kubectl label     crd <name> app.kubernetes.io/managed-by=Helm --overwrite
+  # 방법 2: 그냥 지운다 (istio 는 webhook 도 같이 남는다 — 실검증)
+  kubectl delete validatingwebhookconfiguration istiod-default-validator
+  kubectl delete mutatingwebhookconfiguration   istio-sidecar-injector
+  ```
+- **`another operation (install/upgrade/rollback) is in progress`.** 앞선 helm 프로세스를 죽였을 때 난다.
+  `helm list -A` 로 status=pending-* / failed 를 찾아 `helm uninstall <rel> -n <ns>` 후 다시 설치한다.
+- **`--wait` 가 안 끝나면 원인은 대개 파드 Pending 이다.** helm 을 계속 기다리지 말고 다른 창에서
+  `kubectl get pod -A | grep -v Running` 을 보라. EKS 에서 흔한 원인 두 가지:
+  기본 StorageClass 없음(PVC Pending) / t3.medium 파드 17개 한계(Too many pods).

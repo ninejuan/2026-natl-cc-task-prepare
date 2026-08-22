@@ -69,12 +69,25 @@ addons:
 #   VPC CNI 는 ENI 개수 × IP 수로 max-pods 를 정하기 때문에 CPU/메모리가 텅 비어 있어도
 #   `0/N nodes are available: N Too many pods` 로 스케줄이 막힌다.
 #   DaemonSet(kube-proxy·aws-node·node-exporter·alloy·falco…)만으로 6~8개가 이미 나간다.
-#   CNCF 스택을 여러 개 올릴 계획이면 셋 중 하나를 택하라:
-#     1) 노드 수를 늘린다 (가장 빠름)
-#     2) m5.large 이상으로 올린다 (t3.large=35, m5.large=29)
-#     3) prefix delegation 을 켠다 → max-pods 110
-#        addons 의 vpc-cni 에 configurationValues: '{"env":{"ENABLE_PREFIX_DELEGATION":"true"}}'
-#        ※ 이미 떠 있는 노드의 max-pods 는 안 바뀐다. 노드를 새로 띄워야 적용된다.
+#   CNCF 스택을 여러 개 올릴 계획이면:
+#     1) 노드 수를 늘린다 (가장 빠름. 노드당 실사용 슬롯은 ~9개뿐이라는 점은 감안)
+#     2) prefix delegation + maxPodsPerNode **둘 다** 설정한다 → 110 (아래 참고)
+#
+#   ★★ prefix delegation 만 켜는 것으로는 **전혀 안 늘어난다**(실검증).
+#     vpc-cni 에 ENABLE_PREFIX_DELEGATION=true 를 넣고 노드를 통째로 교체해도
+#     새 노드의 allocatable.pods 는 그대로 17 이었다.
+#     관리형 노드그룹의 max-pods 는 부트스트랩이 인스턴스 타입 공식으로 계산하기 때문에
+#     **노드그룹 쪽에서 따로 지정**해야 한다:
+#         managedNodeGroups[].maxPodsPerNode: 110      # eksctl
+#     둘을 같이 넣어야 실제로 110 이 된다(실검증: 새 노드 allocatable.pods=110).
+#
+#   ★ vpc-cni 를 나중에 update-addon 으로 고칠 때는 **--service-account-role-arn 을 꼭 같이** 준다.
+#     빼면 aws-node 의 IRSA 어노테이션이 지워져 CrashLoopBackOff 로 클러스터가 마비된다(실검증).
+#       ROLE=$(kubectl -n kube-system get sa aws-node -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}')
+#       aws eks update-addon --cluster-name $CL --addon-name vpc-cni \
+#         --service-account-role-arn "$ROLE" --resolve-conflicts OVERWRITE \
+#         --configuration-values '{"env":{"ENABLE_PREFIX_DELEGATION":"true"}}'
+#
 #   확인: kubectl get nodes -o custom-columns=NODE:.metadata.name,MAXPODS:.status.allocatable.pods
 managedNodeGroups:
   # 앱용. 채점이 kubectl get nodes -l 로 찾으므로 labels 를 반드시 채운다.

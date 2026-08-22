@@ -10,6 +10,14 @@ service:
     service.beta.kubernetes.io/aws-load-balancer-nlb-target-type: ip
     service.beta.kubernetes.io/aws-load-balancer-scheme: internet-facing
     service.beta.kubernetes.io/aws-load-balancer-name: skills-istio-nlb
+    # ★★ 이 줄이 없으면 요청의 2/3 이 타임아웃한다(실검증).
+    #   NLB 는 cross-zone 이 **기본 꺼짐**이다. 게이트웨이 파드가 1개면 그 파드가 있는 AZ 의
+    #   NLB 노드로 들어온 요청만 처리되고, 나머지 AZ 로 들어온 요청은 대상이 없어 그냥 죽는다.
+    #   DNS 라운드로빈이라 `curl http://<nlb-dns>/` 이 될 때도 있고 안 될 때도 있어서
+    #   "가끔 되는데?" 로 시간을 다 쓴다. 채점이 curl 한 번 하면 2/3 확률로 0점이다.
+    #   실검증: 3개 NLB IP 중 파드가 있는 AZ(2b) 만 200, 나머지 둘은 000(타임아웃).
+    #   진단: for ip in $(dig +short <nlb-dns>); do curl -s -m5 -o /dev/null -w "$ip %{http_code}\n" http://$ip/; done
+    service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true
 
 resources:
   requests:

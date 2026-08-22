@@ -76,6 +76,30 @@ kubectl run probe --rm -it -n frontend --image=curlimages/curl --restart=Never \
 kubectl run dnstest --rm -it -n app --image=busybox --restart=Never -- nslookup app-svc.app
 ```
 
+`curlimages/curl` 은 Docker Hub 이라 익명 pull 제한에 걸릴 수 있다. ECR Public 만 쓰려면:
+
+```bash
+kubectl run probe --rm -it -n default --restart=Never \
+  --image=public.ecr.aws/docker/library/alpine:3.21 -- \
+  sh -c 'apk add --no-cache curl >/dev/null 2>&1; curl -s -m 5 -o /dev/null -w "%{http_code}\n" http://app-svc.app:8080/health'
+```
+
+`public.ecr.aws/docker/library/curlimages/curl` 은 **존재하지 않는다**(ImagePullBackOff, 실검증).
+ECR Public 의 `docker/library/*` 는 Docker 공식 이미지만 미러한다 — `curlimages` 는 공식이 아니다.
+
+## ★ 검증이 끝나면 NetworkPolicy 를 반드시 정리하라
+
+`default-deny-ingress` 를 남겨 두면 그 네임스페이스에서 **다른 모든 것이 조용히 죽는다**(실검증).
+
+- Prometheus 스크레이프 → 타깃 `down`, `context deadline exceeded`, `up == 0`
+- Istio 게이트웨이 → 앱 경로만 타임아웃(없는 경로는 404 로 정상 응답해서 더 헷갈린다)
+- 다른 네임스페이스의 검증용 파드 → 전부 연결 실패
+
+```bash
+kubectl -n app get netpol            # 남아 있는지 먼저 본다
+kubectl -n app delete netpol --all   # 필요 없으면
+```
+
 정책 적용 로그:
 
 ```bash

@@ -2,6 +2,20 @@
 # 이미 존재하는 네임스페이스에는:
 #   kubectl label namespace app istio-injection=enabled --overwrite
 #   kubectl rollout restart deploy -n app
+#
+# ★★ 주입 확인 명령을 틀리기 쉽다(실검증, Istio 1.30 / k8s 1.35).
+#   istio-proxy 는 이제 **네이티브 사이드카**라 `spec.initContainers` 에 들어간다
+#   (restartPolicy: Always). 그래서 이렇게 보면 주입이 안 된 것처럼 보인다:
+#       kubectl get pod -o jsonpath='{.spec.containers[*].name}'   → web  (istio-proxy 안 보임)
+#   맞는 확인법:
+#       kubectl get pod -o jsonpath='{.spec.initContainers[*].name}'  → istio-init istio-proxy
+#       kubectl get pod                                                → READY 2/2
+#
+# ★★ 이 네임스페이스에 NetworkPolicy 가 남아 있으면 Istio 가 다 맞아도 전부 타임아웃한다(실검증).
+#   default-deny-ingress 하나 때문에 게이트웨이→앱, 파드→파드가 전멸했고
+#   Gateway/VirtualService/Envoy 설정은 전부 정상으로 보여서 원인 찾는 데 오래 걸린다.
+#   증상: 게이트웨이의 없는 경로는 404 로 **빠르게** 응답하는데, 있는 경로만 타임아웃(000).
+#   확인: kubectl -n app get netpol
 apiVersion: v1
 kind: Namespace
 metadata:

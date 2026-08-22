@@ -1,4 +1,15 @@
 # "이 네임스페이스 파드는 전부 특정 노드그룹에서" 요구를 파드 매니페스트 수정 없이 만족시킨다.
+#
+# ★★ mutate 는 **되돌아가지 않는다**(실검증).
+#   Kyverno 는 Pod 규칙에서 Deployment/StatefulSet/DaemonSet 용 규칙을 자동 생성하므로
+#   (`autogen-inject-nodeselector`) 이 nodeSelector 가 **Deployment 스펙에 영구히 기록**된다.
+#   나중에 정책을 지워도 이미 만들어진 Deployment 에는 그대로 남아서,
+#   해당 라벨을 가진 노드가 꽉 차면 그 네임스페이스 전체가 Pending 이 된다.
+#   확인·해제:
+#     kubectl -n app get deploy -o custom-columns=NAME:.metadata.name,NS:.spec.template.spec.nodeSelector
+#     kubectl -n app patch deploy <name> --type=json \
+#       -p='[{"op":"remove","path":"/spec/template/spec/nodeSelector"}]'
+#   ★ 그래서 노드 라벨을 정책으로 강제하기 전에 그 라벨을 가진 노드 용량이 충분한지 먼저 확인하라.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
