@@ -1,3 +1,9 @@
+# ★★ ports.port 는 **컨테이너 포트**다. Service 포트가 아니다(실검증).
+#   Service 가 `port: 8080 → targetPort: 80` 이면 여기에는 80 을 적어야 한다.
+#   8080 을 적으면 허용 규칙이 아무것도 매칭하지 않아 **허용하려던 트래픽까지 전부 막힌다.**
+#   Calico·Cilium 정책도 완전히 같다.
+#   확인: kubectl -n app get pod -o jsonpath='{.items[0].spec.containers[0].ports}'
+
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
