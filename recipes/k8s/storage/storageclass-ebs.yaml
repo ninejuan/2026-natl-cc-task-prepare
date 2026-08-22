@@ -1,8 +1,25 @@
 # aws-ebs-csi-driver 애드온 필요. WaitForFirstConsumer 가 아니면 파드와 볼륨의 AZ 가 어긋난다.
+#
+# ★★ EKS 에는 **기본 StorageClass 가 없다**(실검증, 1.35).
+#   `kubectl get sc` 를 하면 gp2 가 하나 보이지만
+#     - `storageclass.kubernetes.io/is-default-class` 어노테이션이 **안 붙어 있고**
+#     - provisioner 가 in-tree `kubernetes.io/aws-ebs` 라 k8s 1.31+ 에서는 **동작하지 않는다**.
+#   그래서 storageClassName 을 생략한 PVC(= helm 차트 기본값 대부분)는
+#   `unbound pvc must define a storage class` 로 **영원히 Pending** 한다.
+#   Loki/Prometheus/Grafana/Keycloak 처럼 persistence 가 기본 on 인 차트를 깔았는데
+#   파드가 Pending 이면 99% 이것이다.
+#
+#   현장 처방 둘 중 하나:
+#     1) 이 SC 에 아래 annotations 를 붙여 기본으로 만든다 (차트 값을 안 건드려도 됨)
+#        kubectl annotate sc ebs-gp3 storageclass.kubernetes.io/is-default-class=true
+#     2) 차트마다 --set persistence.storageClass=ebs-gp3 로 명시한다
 apiVersion: storage.k8s.io/v1
 kind: StorageClass
 metadata:
   name: ebs-gp3
+  annotations:
+    # ★ 이 줄이 없으면 storageClassName 생략 PVC 가 전부 Pending 이다.
+    storageclass.kubernetes.io/is-default-class: "true"
 provisioner: ebs.csi.aws.com
 volumeBindingMode: WaitForFirstConsumer
 allowVolumeExpansion: true

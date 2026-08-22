@@ -1,4 +1,13 @@
 # 정책은 그대로 두고 특정 워크로드만 예외. 정책을 지우거나 Audit 으로 내리지 않고 빠져나가는 방법.
+#
+# ★★ 예외는 **여기 적은 정책 하나만** 푼다(실검증).
+#   같은 조건을 다른 정책이 중복으로 걸고 있으면 예외를 걸어도 계속 막힌다.
+#   실제로 여기서 disallow-latest-tag 를 풀어도 allowed-registry 의 CEL 이
+#   `!c.image.endsWith(':latest')` 를 또 검사해서 monitoring 에서 여전히 거부됐다.
+#   → "예외를 걸었는데 왜 안 되지" 가 나오면 `kubectl get cpol,vpol` 로 겹치는 정책을 먼저 세어라.
+#
+# ★ 그리고 이 예외는 kyverno.io 계열(ClusterPolicy)만 대상이다.
+#   policies.kyverno.io 의 ValidatingPolicy 는 별도로 matchConstraints 에서 빼야 한다.
 apiVersion: kyverno.io/v2
 kind: PolicyException
 metadata:

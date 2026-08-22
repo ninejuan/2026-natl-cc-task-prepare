@@ -18,6 +18,9 @@ spec:
         - name: app
           image: public.ecr.aws/docker/library/alpine:3.21
           command: ["sh", "-c", "env | grep DB_ && sleep 3600"]
+          resources:
+            requests: {cpu: 10m, memory: 32Mi}
+            limits: {cpu: 100m, memory: 64Mi}
           envFrom:
             - secretRef:
                 name: db-credentials

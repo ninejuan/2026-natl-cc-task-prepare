@@ -1,5 +1,10 @@
 # 네임스페이스가 생기면 ConfigMap 을 자동으로 만든다. synchronize 로 원본 변경도 전파한다.
 # generate 는 Kyverno 의 background-controller 가 수행하므로 background: true 여야 한다.
+#
+# ★★ generate 는 **정책 적용 이후에 생긴** 리소스에만 동작한다(실검증).
+#   정책을 걸기 전부터 있던 네임스페이스에는 ConfigMap 이 안 생긴다 — 조용히 아무 일도 안 일어난다.
+#   과제지가 "모든 네임스페이스에" 라고 하면 반드시 generateExisting: true 를 켜라.
+#   (실검증: 정책 적용 전 만든 prod → 없음 / 적용 후 만든 prod2 → 12초 내 생성됨)
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -18,6 +23,10 @@ spec:
         name: default-config
         namespace: "{{request.object.metadata.name}}"
         synchronize: true
+        # ★ 기존 네임스페이스에도 소급 적용하려면 이 줄. 빼면 신규 ns 만 대상이다.
+        #   위치 주의: rule 바로 밑이 아니라 **generate 블록 안**이다(spec 레벨에도 같은 이름이 있다).
+        #   rule 레벨에 쓰면 `field not declared in schema` 로 거부된다(실검증).
+        generateExisting: true
         data:
           data:
             AWS_REGION: ap-northeast-2

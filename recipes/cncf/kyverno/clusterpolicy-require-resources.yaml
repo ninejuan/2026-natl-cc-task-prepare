@@ -1,3 +1,13 @@
+# ★★★ 클러스터 전체를 Enforce 로 거는 순간 **클러스터가 마비된다**(실검증).
+#   Kyverno 는 Pod 규칙을 Deployment/StatefulSet/DaemonSet/Job 용으로 자동 생성한다
+#   (`autogen-require-requests-limits`). 그래서 이 정책을 걸어 놓은 상태에서
+#     - helm install cert-manager      → Error: admission webhook denied
+#     - helm install jaeger-operator   → 같은 이유로 실패
+#     - helm install istio-base/istiod → 같은 이유로 실패
+#     - kubectl rollout restart deploy → 기존 애드온도 재시작 불가
+#   가 전부 터졌다. 애드온 차트는 대부분 limits 를 안 넣기 때문이다.
+#   ★ 과제지가 "모든 파드" 라고 해도 시스템/애드온 네임스페이스는 반드시 exclude 하라.
+#     채점은 앱 네임스페이스만 본다. 애드온까지 막아서 얻는 점수는 없다.
 apiVersion: kyverno.io/v1
 kind: ClusterPolicy
 metadata:
@@ -10,6 +20,23 @@ spec:
         any:
           - resources:
               kinds: ["Pod"]
+      exclude:
+        any:
+          - resources:
+              namespaces:
+                - kube-system
+                - kube-public
+                - kube-node-lease
+                - kyverno
+                - cert-manager
+                - istio-system
+                - monitoring
+                - observability
+                - external-secrets
+                - keda
+                - argocd
+                - falco
+                - crossplane-system
       validate:
         failureAction: Enforce
         message: "모든 컨테이너에 resources.requests 와 limits 가 필요합니다"

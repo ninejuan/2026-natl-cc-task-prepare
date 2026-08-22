@@ -28,3 +28,7 @@ spec:
             requests:
               cpu: 100m
               memory: 128Mi
+            # ★ limits 를 빼면 require-resources 류 정책이 걸린 클러스터에서 배포가 거부된다
+            limits:
+              cpu: 500m
+              memory: 256Mi
