@@ -120,3 +120,21 @@ kubectl run probe --rm -it -n app --restart=Never \
 - **`order` 를 안 주면 기본값(1000)** 이라 의도한 순서가 안 나온다.
 - Tigera Operator 설치 후 `Installation` CR 을 안 넣으면 아무것도 안 뜬다. 두 단계다.
 - 삭제할 때 Operator 를 먼저 지우면 CR 이 남아 finalizer 에 걸린다. CR → Operator 순서.
+- **`Installation` 만 지우면 삭제가 영원히 안 끝난다**(실검증). 최신 Calico 는 CR 이 여러 개라
+  `Installation` 이 다른 CR 의 finalizer 를 기다린다:
+
+  ```
+  tigera-operator 로그:
+    Waiting for finalization to complete before removing CNI resources
+      finalizer=operator.tigera.io/goldmane-controller
+      finalizer=operator.tigera.io/apiserver-controller
+  ```
+
+  ```bash
+  # 이 순서로 지운다
+  kubectl delete apiserver --all
+  kubectl delete goldmane --all
+  kubectl delete whisker  --all
+  kubectl delete installation --all
+  helm uninstall calico -n tigera-operator
+  ```

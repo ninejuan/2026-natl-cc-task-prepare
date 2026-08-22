@@ -1,5 +1,19 @@
 # 하나의 입력을 조건에 따라 다른 목적지로 나눈다. Fluent Bit 으로는 번거로운 구성.
 # ERROR 는 OpenSearch(검색용), 전체는 S3(보관용).
+#
+# ★★ 이 설정은 `-cloudwatch-` 이미지로는 **안 돌아간다**(실검증).
+#   fluent/fluentd-kubernetes-daemonset:v1.17-debian-cloudwatch-1 에 들어 있는 플러그인은
+#   기동 로그에 전부 찍힌다 — 실측 목록:
+#     cloudwatch-logs / concat / detect-exceptions / grok-parser / json-in-json-2 /
+#     kubernetes_metadata_filter / multi-format-parser / parser-cri / prometheus /
+#     record-modifier / rewrite-tag-filter / systemd
+#   → opensearch 도 s3 도 없다. 그대로 쓰면 기동 시 config error 로 죽는다.
+#   목적지에 맞는 태그를 골라라(하나의 이미지에 전부 들어 있지 않다):
+#     -cloudwatch-  : CloudWatch Logs
+#     -s3-          : S3
+#     -opensearch-  : OpenSearch
+#   두 곳 이상으로 보내야 하면 이미지를 직접 빌드하거나(gem install), DaemonSet 을 두 개 띄운다.
+#   확인: kubectl -n logging logs ds/fluentd | grep "gem 'fluent-plugin
 apiVersion: v1
 kind: ConfigMap
 metadata:
