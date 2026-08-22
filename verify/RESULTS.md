@@ -707,6 +707,20 @@ recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
 - **EFS 는 마운트타깃을 먼저** 지워야 파일시스템이 지워진다.
 - eksctl 의 대기 시간이 만료돼도 CloudFormation 은 계속 진행 중일 수 있다.
   `describe-stacks` 로 실제 상태를 보고 판단한다.
+- **VPC 삭제가 `has dependencies and cannot be deleted` 로 실패하면 EKS 가 만든 보안그룹을 봐라.**
+  `eks-cluster-sg-<cluster>-*` 는 CloudFormation 이 만든 게 아니라 EKS 가 만든 것이라
+  스택 삭제로 안 지워지고 VPC 를 붙잡는다. 자기참조 규칙을 먼저 revoke 해야 삭제된다:
+  ```bash
+  SG=$(aws ec2 describe-security-groups --filters Name=vpc-id,Values=$VPC \
+        Name=group-name,Values='eks-cluster-sg-*' --query 'SecurityGroups[0].GroupId' --output text)
+  aws ec2 revoke-security-group-ingress --group-id $SG --ip-permissions \
+    "$(aws ec2 describe-security-groups --group-ids $SG --query 'SecurityGroups[0].IpPermissions' --output json)"
+  aws ec2 revoke-security-group-egress  --group-id $SG --ip-permissions \
+    "$(aws ec2 describe-security-groups --group-ids $SG --query 'SecurityGroups[0].IpPermissionsEgress' --output json)"
+  aws ec2 delete-security-group --group-id $SG
+  aws cloudformation delete-stack --stack-name eksctl-<cluster>-cluster   # 재시도
+  ```
+  잔여 의존성 점검 순서: ENI → ELB → NAT → VPC 엔드포인트 → 서브넷 → **보안그룹**.
 
 삭제한 것: EKS 2, IAM role 10, OIDC provider(클러스터와 함께), SQS 1, Secrets 3, SSM 1,
 S3 버킷 1, 로그그룹 3, EFS 1(마운트타깃 3), TargetGroup 1, ALB/NLB 전부, Karpenter CFN 스택 1.

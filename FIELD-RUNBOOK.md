@@ -141,6 +141,10 @@ bin/mark-self.sh --foul     # 금지 조항 위반 여부만 검사
 - **CNI 정책 엔진(Calico/Cilium)을 바꾸면 노드를 교체하라.** `helm uninstall` 로는 노드가 안 깨끗해지고,
   다음 CNI 가 통째로 고장난다. Cilium 제거 후 `05-cilium.conflist` 가 남으면 **새 파드가 아예 안 뜬다**
   (복구는 hostNetwork 특권 DaemonSet 으로 파일 삭제 → 그래도 안 되면 노드 교체).
+- **클러스터를 지웠는데 VPC 가 안 지워진다** → `eks-cluster-sg-<cluster>-*` 보안그룹이 남아서다.
+  EKS 가 만든 것이라 CloudFormation 스택 삭제로는 안 없어진다. 자기참조 규칙을 revoke 한 뒤
+  SG 를 지우고 스택 삭제를 재시도한다. Gateway API 로 만든 ALB 도 `delete ingress` 로는 안 지워지니
+  `kubectl delete gateway.gateway.networking.k8s.io -A --all` 을 먼저 해야 한다.
 - **vpc-cni 를 `update-addon` 으로 고칠 때 `--service-account-role-arn` 을 빼지 마라.**
   aws-node 의 IRSA 어노테이션이 지워져 CrashLoopBackOff → 새 파드가 IP 를 못 받아 클러스터가 마비된다.
 
