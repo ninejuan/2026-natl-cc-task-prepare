@@ -115,6 +115,35 @@ bin/mark-self.sh --foul     # 금지 조항 위반 여부만 검사
   → 이런 건 **먼저 만들어 놓고** 나머지를 한다.
 - Config rule 은 리소스 discovery 에 수 분 걸린다. **3분 안에 탐지·조치를 보여야 하면 EventBridge→Lambda** 경로.
 
+**EKS/CNCF 에서 조용히 죽는 것 (전부 실제 클러스터에서 당했다)**
+- **EKS 에 기본 StorageClass 가 없다.** `gp2` 가 보이지만 default 표시가 없고 in-tree 프로비저너라
+  동작하지 않는다 → `storageClassName` 생략 PVC 는 **영원히 Pending**. helm 차트 태반이 여기 걸린다.
+  처치: `kubectl annotate sc ebs-gp3 storageclass.kubernetes.io/is-default-class=true`
+- **t3.medium 은 파드 17개가 한계.** CPU/메모리가 텅 비어도 `Too many pods` 로 스케줄이 막힌다.
+  DaemonSet 만으로 6~8개가 나간다. prefix delegation **만으로는 안 늘어난다** —
+  노드그룹에 `maxPodsPerNode: 110` 을 같이 줘야 한다.
+- **NetworkPolicy 잔재가 다른 모든 것을 죽인다.** `default-deny-ingress` 하나로
+  Prometheus 스크레이프(`up=0`)·Istio 게이트웨이가 전멸한다. 검증 끝나면 `kubectl -n <ns> delete netpol --all`.
+- **NetworkPolicy/Calico/Cilium 의 포트는 전부 컨테이너 포트.** Service 포트를 적으면
+  허용하려던 트래픽까지 전부 막힌다.
+- **NLB 는 cross-zone 이 기본 꺼짐.** 백엔드 파드가 1개면 요청의 2/3 이 타임아웃한다.
+  DNS 라운드로빈이라 "가끔 되는데?" 로 시간을 버린다 →
+  `service.beta.kubernetes.io/aws-load-balancer-attributes: load_balancing.cross_zone.enabled=true`
+- **Kyverno Enforce 정책을 클러스터 전역에 걸면 애드온 설치가 전부 막힌다.**
+  autogen 규칙이 Deployment 에도 적용돼 `helm install` 과 `rollout restart` 까지 거부된다.
+  시스템/애드온 네임스페이스를 반드시 `exclude`. 그리고 **mutate 는 되돌아가지 않는다**(스펙에 기록됨).
+- **helm 은 릴리스 이름을 ServiceAccount 이름에 붙인다.** IRSA 어노테이션을 엉뚱한 SA 에 달면
+  컨트롤러가 조용히 노드 인스턴스 role 로 폴백한다. `kubectl get pod -o jsonpath='{.items[0].spec.serviceAccountName}'`
+- **helm values 의 오타·없는 값은 오류가 안 난다.** 실제로 Loki `deploymentMode: Monolithic`(없는 값)로
+  파드가 0개 뜨고도 "설치 성공" 이 나왔다. 설치 후 반드시 `kubectl get sts,deploy,pod` 로 실물을 확인한다.
+- **ArgoCD 는 `SYNC` 를 봐라.** 브랜치 이름이 틀리면 `SYNC=Unknown` 인데 `HEALTH=Healthy` 로 보인다.
+  확신이 없으면 `targetRevision: HEALTH` 가 아니라 **`HEAD`**.
+- **CNI 정책 엔진(Calico/Cilium)을 바꾸면 노드를 교체하라.** `helm uninstall` 로는 노드가 안 깨끗해지고,
+  다음 CNI 가 통째로 고장난다. Cilium 제거 후 `05-cilium.conflist` 가 남으면 **새 파드가 아예 안 뜬다**
+  (복구는 hostNetwork 특권 DaemonSet 으로 파일 삭제 → 그래도 안 되면 노드 교체).
+- **vpc-cni 를 `update-addon` 으로 고칠 때 `--service-account-role-arn` 을 빼지 마라.**
+  aws-node 의 IRSA 어노테이션이 지워져 CrashLoopBackOff → 새 파드가 IP 를 못 받아 클러스터가 마비된다.
+
 ## 참고
 
 - 채점 방식 상세: `_analysis/MARK-PATTERNS.md`
