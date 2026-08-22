@@ -724,4 +724,15 @@ recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
 
 삭제한 것: EKS 2, IAM role 10, OIDC provider(클러스터와 함께), SQS 1, Secrets 3, SSM 1,
 S3 버킷 1, 로그그룹 3, EFS 1(마운트타깃 3), TargetGroup 1, ALB/NLB 전부, Karpenter CFN 스택 1.
-`apdev-*` 는 전 과정 무접촉.
+
+최종 스윕 (7개 리전: ap-northeast-1/2, ap-southeast-1, us-east-1, us-west-2, eu-west-1, sa-east-1):
+
+```
+eks=[] cfn=[] elb=[] ec2=[]   ← 전 리전 동일
+IAM roles(skills|Karpenter)=[]  OIDC=[]  EFS=[]  S3(skills)=[]  Secrets=[]  SQS=[]  로그그룹(/skills)=[]
+```
+
+`apdev-*` 는 전 과정 무접촉 — 모든 정리 명령의 필터는 `skills` / `Karpenter` 였다.
+(참고: `apdev-eks` 는 2026-08-22 21:11 KST 에 **사용자 쪽 Terraform**
+`terraform-provider-aws/5.100.0` 이 삭제했다. CloudTrail 로 확인 —
+이쪽 작업은 전부 `aws-cli` / `cloudformation.amazonaws.com` / eksctl 로 찍힌다.)
