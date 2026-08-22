@@ -1,5 +1,22 @@
 # 앱 코드를 고치지 않고 트레이스를 뽑는다. Operator 가 initContainer 로 SDK 를 주입한다.
 # 파드에 annotation 을 붙이면 적용된다: instrumentation.opentelemetry.io/inject-python: "true"
+#
+# ★ annotation 값에 **이 Instrumentation 의 이름**을 주는 편이 안전하다("true" 는 같은 ns 에
+#   Instrumentation 이 정확히 하나일 때만 동작한다):
+#     instrumentation.opentelemetry.io/inject-python: "skills-instrumentation"
+#
+# 주입 확인(실검증한 형태):
+#   kubectl -n app get pod -l app=app-traced -o jsonpath='{.items[0].spec.initContainers[*].name}'
+#     → ... opentelemetry-auto-instrumentation-python
+#   kubectl -n app get pod -l app=app-traced \
+#     -o jsonpath='{range .items[0].spec.containers[0].env[*]}{.name}={.value}{"\n"}{end}' | grep OTEL
+#     → OTEL_SERVICE_NAME / OTEL_EXPORTER_OTLP_PROTOCOL / OTEL_POD_IP ...
+#
+# ★ annotation 은 **파드가 새로 만들어질 때만** 주입된다. 기존 Deployment 에 붙였으면
+#   `kubectl rollout restart deploy/<name>` 을 반드시 같이 한다.
+#
+# 실검증: python 앱 → 자동계측 → ADOT 콜렉터 → X-Ray 까지 트레이스 도달
+#         (aws xray get-trace-summaries 에 ServiceIds[0].Name=skills-app 로 확인)
 apiVersion: opentelemetry.io/v1alpha1
 kind: Instrumentation
 metadata:

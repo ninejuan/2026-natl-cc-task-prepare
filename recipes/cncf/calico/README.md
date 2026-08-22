@@ -13,10 +13,23 @@
 VPC CNI 가 NetworkPolicy 를 지원하므로 표준 정책만 필요하면 Calico 를 깔 이유가 없다. 애드온 설정만 켜면 된다.
 
 ```bash
+# ★★ --service-account-role-arn 을 반드시 같이 준다. 빼면 aws-node 의 IRSA 어노테이션이 지워져
+#    노드 인스턴스 role 로 폴백하고, ec2:DescribeNetworkInterfaces 403 → ipamd 실패 →
+#    aws-node CrashLoopBackOff → 새 파드가 IP 를 못 받아 클러스터가 마비된다(실검증).
+ROLE=$(kubectl -n kube-system get sa aws-node \
+  -o jsonpath='{.metadata.annotations.eks\.amazonaws\.com/role-arn}')
 aws eks update-addon --cluster-name skills-eks --addon-name vpc-cni \
-  --region ap-northeast-2 --resolve-conflicts PRESERVE \
+  --region ap-northeast-2 --resolve-conflicts OVERWRITE \
+  --service-account-role-arn "$ROLE" \
   --configuration-values '{"enableNetworkPolicy":"true"}'
+
+# 복구가 필요하면 (이미 어노테이션이 날아갔을 때)
+kubectl -n kube-system annotate sa aws-node eks.amazonaws.com/role-arn="$ROLE" --overwrite
+kubectl -n kube-system delete pod -l k8s-app=aws-node
 ```
+
+가능하면 클러스터 **생성 시점에** `addons[].configurationValues` 로 켜는 편이 안전하다
+([`../../k8s/_cluster/cluster.yaml`](../../k8s/_cluster/cluster.yaml) 참고).
 
 ## 설치 (policy-only)
 
