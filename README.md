@@ -55,8 +55,10 @@ VPC Lattice · Network Firewall · RDS Connection · Client VPN · Storage prote
 | Secrets Manager / SSM 값을 k8s Secret 으로 | [`cncf/external-secrets/`](recipes/cncf/external-secrets/) |
 | GitOps, 커밋하면 자동 배포, CI/CD 배포 단계 | [`cncf/argocd/`](recipes/cncf/argocd/) |
 | Prometheus, 메트릭 수집, ServiceMonitor, 알림 규칙 | [`cncf/prometheus/`](recipes/cncf/prometheus/) |
+| **PromQL 쿼리를 직접 짜야 한다** (CPU/메모리/에러율/p95/알림식) | [`cncf/prometheus/PROMQL.md`](recipes/cncf/prometheus/PROMQL.md) |
 | Grafana, 대시보드 패널, 데이터소스 | [`cncf/grafana/`](recipes/cncf/grafana/) |
-| Loki, LogQL, 로그를 대시보드에서 쿼리 | [`cncf/loki/`](recipes/cncf/loki/) |
+| Loki, **LogQL 쿼리**, 로그를 대시보드에서 쿼리 | [`cncf/loki/`](recipes/cncf/loki/#logql) |
+| **CloudWatch Logs Insights 쿼리** | [`aws/tier3/cloudwatch/logs-insights.md`](recipes/aws/tier3/cloudwatch/logs-insights.md) |
 | 로그 **형식 변환**, 여러 목적지로 분기 | [`cncf/fluentd/`](recipes/cncf/fluentd/) |
 | OpenTelemetry, 트레이스, X-Ray, 자동 계측 | [`cncf/opentelemetry/`](recipes/cncf/opentelemetry/) |
 | Jaeger, 트레이스를 화면에서 | [`cncf/jaeger/`](recipes/cncf/jaeger/) |

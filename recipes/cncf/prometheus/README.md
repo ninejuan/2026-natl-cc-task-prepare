@@ -24,10 +24,16 @@ kubectl get servicemonitor -A -o jsonpath='{range .items[*]}{.metadata.name}{"\n
 
 `values-kube-prometheus-stack.yaml` 에 이미 `enabled: false` 로 넣어뒀다.
 
+## ★ 쿼리를 짜야 하면 → [`PROMQL.md`](PROMQL.md)
+
+과제지 문구별 PromQL 사전(노드/파드/kube-state-metrics/앱 RED/알림/레코딩/벡터매칭/Grafana/함정).
+표현식 56개 전부 `promtool check rules` 통과.
+
 ## 파일
 
 | 파일 | 케이스 |
 |---|---|
+| [`PROMQL.md`](PROMQL.md) | **쿼리 사전** — 문구 → PromQL |
 | [`values-kube-prometheus-stack.yaml`](values-kube-prometheus-stack.yaml) | 설치 값. EKS 비노출 컴포넌트 비활성 + 보존기간 + 스토리지 |
 | [`servicemonitor.yaml`](servicemonitor.yaml) | Service 를 통해 앱 메트릭 수집 |
 | [`podmonitor.yaml`](podmonitor.yaml) | Service 없이 파드 직접 수집 |
