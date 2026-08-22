@@ -1,3 +1,24 @@
+# ★★★ HTTP 리스너만 두면 Keycloak 이 **403 을 돌려준다**(실검증).
+#   {"error":"invalid_request","error_description":"HTTPS required"}
+#   ALB 헬스체크는 초록이고 파드도 Ready 라서 "왜 403 이지" 로 한참 헤맨다.
+#   원인: realm 의 sslRequired 기본값이 `external` 이고, KC_PROXY_HEADERS=xforwarded 때문에
+#         Keycloak 이 ALB 가 넘긴 X-Forwarded-Proto: http 를 그대로 신뢰해 평문으로 판정한다.
+#
+#   해결 두 가지:
+#     A) ALB 에 HTTPS 리스너를 붙인다 (ACM 인증서 + 도메인이 있을 때. 과제지가 https 를 요구하면 이쪽)
+#          alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+#          alb.ingress.kubernetes.io/certificate-arn: arn:aws:acm:...
+#     B) realm 의 sslRequired 를 끈다 (평문 http 로 채점하는 경우. 실검증으로 통과 확인)
+#          P=$(kubectl -n keycloak get pod -l app=keycloak -o jsonpath='{.items[0].metadata.name}')
+#          kubectl -n keycloak exec $P -- /opt/keycloak/bin/kcadm.sh config credentials \
+#            --server http://localhost:8080 --realm master --user admin --password "$PW"
+#          kubectl -n keycloak exec $P -- /opt/keycloak/bin/kcadm.sh update realms/master -s sslRequired=NONE
+#        ※ 새로 만든 realm 마다 따로 꺼야 한다. realms/<name> 으로 바꿔 실행.
+#
+#   확인(실검증한 명령):
+#     curl -s http://$ALB/realms/master/.well-known/openid-configuration | jq -r .issuer
+#     curl -s -X POST http://$ALB/realms/master/protocol/openid-connect/token \
+#       -d client_id=admin-cli -d username=admin -d password="$PW" -d grant_type=password | jq -r .access_token
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:

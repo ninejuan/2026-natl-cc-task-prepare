@@ -25,6 +25,60 @@ kubectl apply -f providerconfig-irsa.yaml
 
 **Provider 가 Healthy 가 되기까지 2~5분** 걸린다. 그 사이 CRD 가 등록되므로 관리 리소스를 미리 apply 하면 실패한다. `kubectl wait` 로 기다려라.
 
+## ★★★ 가장 큰 함정: Provider 가 ProviderConfig 를 못 읽어서 **완전히 침묵한다**
+
+실검증에서 40분을 태운 지점이다. 증상이 이렇다:
+
+- `kubectl get provider` → 전부 `HEALTHY=True`
+- Provider 파드 → `Running`, 재시작 0
+- MR(`kubectl get bucket`) → 오브젝트는 생기는데 **SYNCED / READY 칸이 영원히 빈칸**
+- `kubectl describe bucket` → `Events: <none>`
+- Provider 로그 → 기동 한 줄 뒤로 **아무것도 없음**
+
+원인은 RBAC 이다. 서비스 Provider 의 ClusterRole 에 `aws.upbound.io` / `aws.m.upbound.io`
+(= ProviderConfig 가 사는 그룹) 권한이 안 들어가는 경우가 있다. 자격증명 해석 단계에서
+막히면 컨트롤러가 조용히 멈춘다.
+
+```bash
+# 진단 — 이 한 줄로 끝난다
+SA=$(kubectl -n crossplane-system get sa -o name | grep provider-aws-s3 | cut -d/ -f2)
+kubectl auth can-i list clusterproviderconfigs.aws.m.upbound.io \
+  --as=system:serviceaccount:crossplane-system:$SA        # no 면 이 문제다
+```
+
+```bash
+# 처치 — ClusterRole 을 직접 붙이고 Provider 파드를 재시작
+cat <<'EOF' | kubectl apply -f -
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata: {name: crossplane-provider-aws-providerconfig}
+rules:
+  - apiGroups: ["aws.upbound.io","aws.m.upbound.io"]
+    resources: ["*"]
+    verbs: ["get","list","watch","create","update","patch","delete"]
+EOF
+kubectl create clusterrolebinding crossplane-provider-aws-providerconfig \
+  --clusterrole=crossplane-provider-aws-providerconfig \
+  $(kubectl -n crossplane-system get sa -o name | grep provider-aws- \
+    | sed 's|serviceaccount/|--serviceaccount=crossplane-system:|' | tr '\n' ' ')
+kubectl -n crossplane-system delete pod -l pkg.crossplane.io/provider
+```
+
+이걸 붙이자마자 실검증에서 `SYNCED=True READY=True` 로 바뀌고
+S3 버킷·DynamoDB 테이블이 실제로 생성됐다.
+
+**로그가 필요하면 `--debug` 를 켜라.** upjet AWS Provider 는 기본 로그 레벨에서 아무것도 안 찍는다.
+`deploymentruntimeconfig-irsa.yaml` 의 주석 처리된 `deploymentTemplate` 블록을 살리면 된다.
+
+## 실검증으로 확인한 순서 (Crossplane 2.4.0 / provider-aws 2.7.0 / EKS 1.35)
+
+```
+DeploymentRuntimeConfig → Function → Provider(runtimeConfigRef 로 연결)
+  → (위 RBAC 처치) → ProviderConfig + ClusterProviderConfig
+  → XRD → Composition → XR
+결과: XR Ready=True, s3://skills-book-bucket, dynamodb:skills-book-table 생성 확인
+```
+
 ## 파일
 
 | 파일 | 케이스 |

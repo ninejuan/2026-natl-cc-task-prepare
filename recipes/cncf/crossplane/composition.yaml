@@ -24,7 +24,14 @@ spec:
         resources:
           - name: bucket
             base:
-              apiVersion: s3.aws.upbound.io/v1beta2      # v1beta1 은 provider v2.6.0 부터 deprecated
+              # ★★ Namespaced XRD(scope: Namespaced)는 **네임스페이스 MR 만** 조립할 수 있다(실검증).
+              #   클러스터 스코프 MR(s3.aws.upbound.io)을 쓰면 XR 이 이렇게 멈춘다:
+              #     "cannot apply cluster scoped composed resource ... for a namespaced composite resource"
+              #   provider-aws v2 는 같은 리소스를 두 그룹으로 낸다:
+              #     s3.aws.upbound.io      → Cluster 스코프 (v1beta1, v1beta2)
+              #     s3.aws.m.upbound.io    → Namespaced    (v1beta1)   ← 여기 'm' 이 핵심
+              #   XRD 를 scope: Cluster 로 둘 거면 반대로 위쪽(비-m)을 쓴다.
+              apiVersion: s3.aws.m.upbound.io/v1beta1
               kind: Bucket
               spec:
                 forProvider:
@@ -37,11 +44,15 @@ spec:
                 transforms:
                   - type: string
                     string:
+                      # ★ string.type 을 빼면 Composition 이 조용히 아무것도 안 만든다(실검증).
+                      #   XR .status: "invalid Function input: ... string transform type is required"
+                      #   `kubectl get managed` 이 계속 비어 있으면 XR 의 status.conditions 를 봐라.
+                      type: Format
                       fmt: "skills-%s-bucket"
 
           - name: table
             base:
-              apiVersion: dynamodb.aws.upbound.io/v1beta2
+              apiVersion: dynamodb.aws.m.upbound.io/v1beta1
               kind: Table
               spec:
                 forProvider:
@@ -59,4 +70,5 @@ spec:
                 transforms:
                   - type: string
                     string:
+                      type: Format
                       fmt: "skills-%s-table"

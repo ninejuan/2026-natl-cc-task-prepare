@@ -1,6 +1,11 @@
 # Provider 파드의 ServiceAccount 에 IRSA annotation 을 심는다.
 # Provider 매니페스트에서 spec.runtimeConfigRef.name: aws-irsa 로 참조한다.
 # (구버전 Crossplane 은 ControllerConfig 를 썼다. 지금은 deprecated.)
+#
+# ★★ upjet 계열 AWS Provider 는 **기본 로그 레벨에서 아무것도 안 찍는다**(실검증).
+#   기동 한 줄("Beta feature enabled") 뒤로 완전히 조용해서, MR 이 안 만들어질 때
+#   원인을 볼 방법이 없다. 문제를 볼 때는 여기 args 로 --debug 를 넣고 파드를 재시작한다.
+#   그러면 "Calling the inner handler for Create event { gvk, name, namespace }" 같은 게 나온다.
 apiVersion: pkg.crossplane.io/v1beta1
 kind: DeploymentRuntimeConfig
 metadata:
@@ -10,3 +15,12 @@ spec:
     metadata:
       annotations:
         eks.amazonaws.com/role-arn: arn:aws:iam::000000000000:role/skills-crossplane-role
+  # ↓ 디버깅이 필요할 때만. 컨테이너 이름은 반드시 package-runtime 이다.
+  # deploymentTemplate:
+  #   spec:
+  #     selector: {}
+  #     template:
+  #       spec:
+  #         containers:
+  #           - name: package-runtime
+  #             args: ["--debug"]

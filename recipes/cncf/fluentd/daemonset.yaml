@@ -20,6 +20,13 @@ spec:
         - name: fluentd
           image: fluent/fluentd-kubernetes-daemonset:v1.17-debian-cloudwatch-1
           env:
+            # ★ kubernetes_metadata 필터가 이 값으로 자기 노드의 파드만 watch 한다.
+            #   빼면 기동 로그에 경고가 뜨고 모든 노드의 fluentd 가 API 서버 전체를 watch 한다:
+            #     [warn]: [filter_kube_metadata] !! The environment variable 'K8S_NODE_NAME' is not set ... !!
+            - name: K8S_NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
             - name: AWS_REGION
               value: ap-northeast-2
             - name: FLUENT_UID

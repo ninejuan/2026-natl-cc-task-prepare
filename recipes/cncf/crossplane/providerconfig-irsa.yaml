@@ -3,6 +3,25 @@
 # Provider 파드의 SA 에 role-arn annotation 을 붙이려면 DeploymentRuntimeConfig 가 필요하다.
 # 아래 두 리소스를 순서대로 적용하고, Provider 의 spec.runtimeConfigRef 로 연결한다.
 #   (Provider 매니페스트에 추가:  spec.runtimeConfigRef: {name: aws-irsa})
+#
+# ★★ provider-aws v2 는 ProviderConfig 를 **세 종류**로 낸다(실검증한 CRD 목록):
+#     providerconfigs.aws.upbound.io          Cluster    ← 클러스터 스코프 MR(*.aws.upbound.io)용
+#     clusterproviderconfigs.aws.m.upbound.io Cluster    ← 네임스페이스 MR(*.aws.m.upbound.io)의 **기본값**
+#     providerconfigs.aws.m.upbound.io        Namespaced ← 네임스페이스별로 자격증명을 나눌 때
+#   네임스페이스 MR 의 providerConfigRef 기본값은 `{kind: ClusterProviderConfig, name: default}` 다.
+#   아래 것만 만들어 두고 네임스페이스 MR 을 쓰면 **참조 대상이 없어서 아무 일도 안 일어난다.**
+#   Namespaced XRD 를 쓸 거면 아래 것과 함께 이것도 만들어라:
+#     apiVersion: aws.m.upbound.io/v1beta1
+#     kind: ClusterProviderConfig
+#     metadata: {name: default}
+#     spec: {credentials: {source: IRSA}}
+#   확인: kubectl get crd | grep providerconfig
+#
+# ★ IRSA 가 붙었는지 확인:
+#     kubectl -n crossplane-system get sa -o custom-columns=\
+#       NAME:.metadata.name,ROLE:.metadata.annotations.eks\\.amazonaws\\.com/role-arn
+#   family provider(자동 설치되는 provider-family-aws)는 runtimeConfigRef 가 `default` 라
+#   IRSA 가 안 붙는다. 서비스 provider 쪽만 붙으면 정상이다.
 apiVersion: aws.upbound.io/v1beta1
 kind: ProviderConfig
 metadata:

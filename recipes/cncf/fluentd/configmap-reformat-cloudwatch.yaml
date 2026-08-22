@@ -59,12 +59,16 @@ data:
       remove_keys kubernetes,docker,stream,logtag,message,log,$.kubernetes.labels
     </filter>
 
+    # ★★ log_stream_name / use_tag_as_stream / log_stream_name_key 는 **셋 중 하나만** 쓴다.
+    #   `use_tag_as_stream false` 처럼 **false 로 명시해도 "설정한 것"으로 세어서** 기동이 실패한다(실검증):
+    #     [error]: config error ... error="Set only one of log_stream_name, use_tag_as_stream and log_stream_name_key"
+    #   fluentd 는 이 경우 파드가 CrashLoop 도 안 되고 그냥 안 뜬다 — 반드시 로그를 봐라.
+    #     kubectl -n logging logs ds/fluentd --tail=30
     <match kubernetes.**>
       @type cloudwatch_logs
       region ap-northeast-2
       log_group_name /skills/eks/app
       log_stream_name_key kubernetes_pod
-      use_tag_as_stream false
       auto_create_stream true
       json_handler json
       <buffer>
