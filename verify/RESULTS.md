@@ -693,7 +693,21 @@ recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
 26. **L7 정책에서 200/503 이 섞이면 정책이 아니라 Service 엔드포인트를 의심**하라.
     서버가 아닌 파드가 같은 라벨을 달고 있으면 절반이 503 이 된다(실측 후 라벨 제거 → 10/10 200).
 
-## 검증에 쓴 임시 리소스
+## 정리 (teardown)
 
-`skills-eks`(ap-northeast-2) / `skills-cni`(ap-northeast-1) 두 클러스터와 부속 IAM/SQS/Secrets/
-로그그룹은 검증 종료 후 정리한다. 정리 여부는 아래 "정리" 절에 기록한다.
+`skills-cni`(ap-northeast-1) / `skills-eks`(ap-northeast-2) 두 클러스터와 부속 리소스 전부 삭제.
+
+정리하면서 확인한 순서 문제:
+
+- **Gateway API 로 만든 ALB 는 `kubectl delete ingress` 로 안 지워진다.**
+  `kubectl delete gateway.gateway.networking.k8s.io -A --all` 을 따로 해야 한다.
+  LB 가 남아 있으면 VPC 삭제가 막혀 클러스터 스택이 안 지워진다.
+- **Karpenter CFN 스택보다 IAM role 을 먼저 지우면 스택 삭제가 실패**한다
+  (`Cannot delete a policy attached to entities`). role 을 먼저 지웠다면 스택 삭제를 재시도하면 된다.
+- **EFS 는 마운트타깃을 먼저** 지워야 파일시스템이 지워진다.
+- eksctl 의 대기 시간이 만료돼도 CloudFormation 은 계속 진행 중일 수 있다.
+  `describe-stacks` 로 실제 상태를 보고 판단한다.
+
+삭제한 것: EKS 2, IAM role 10, OIDC provider(클러스터와 함께), SQS 1, Secrets 3, SSM 1,
+S3 버킷 1, 로그그룹 3, EFS 1(마운트타깃 3), TargetGroup 1, ALB/NLB 전부, Karpenter CFN 스택 1.
+`apdev-*` 는 전 과정 무접촉.
