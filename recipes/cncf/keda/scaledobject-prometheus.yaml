@@ -1,5 +1,15 @@
 # Prometheus 쿼리 결과로 스케일. RPS·응답시간·커스텀 메트릭 기반 요구에 쓴다.
 # serverAddress 는 kube-prometheus-stack 설치 시 prometheus-operated 또는 <release>-prometheus 서비스.
+#
+# ★ minReplicaCount 가 0 이 아니면 KEDA 가 apply 때 경고를 준다(실검증). 오류는 아니지만
+#   "설정했는데 왜 안 먹지" 의 답이 여기 있다 — 아래 두 필드는 0→1 전환에만 관여한다:
+#     Warning: PollingInterval is configured but is not relevant.
+#              PollingInterval is only relevant when minReplicaCount = 0 ...
+#     Warning: CooldownPeriod is configured but is not relevant. ...
+#   minReplicaCount >= 1 이면 스케일 주기는 HPA(기본 15초)가 정한다.
+#
+# 확인: kubectl -n app get scaledobject worker-prom      → READY=True
+#       kubectl -n app get hpa keda-hpa-worker-prom      → 메트릭 이름이 s0-prometheus 로 나온다
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:

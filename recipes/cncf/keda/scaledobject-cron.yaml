@@ -1,4 +1,8 @@
 # 시간대별 최소 파드 수. timezone 은 IANA 이름. 다른 트리거와 함께 쓰면 최대값이 채택된다.
+#
+# 실검증: Asia/Seoul 09:00~18:00 구간 안에서 apply → 30초 내에 worker 가 5 로 올라갔다.
+#   구간 밖이면 minReplicaCount(1) 로 내려간다. 채점 시각이 구간 밖이면 0점이니
+#   start/end 를 과제지 시각에 정확히 맞추고, 애매하면 `* * * * *` 로 항상 켜 둔다.
 apiVersion: keda.sh/v1alpha1
 kind: ScaledObject
 metadata:

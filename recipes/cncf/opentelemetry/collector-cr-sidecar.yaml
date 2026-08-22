@@ -1,6 +1,12 @@
 # Operator(또는 ADOT 애드온)를 깔았을 때의 설정 방법. values 대신 CR 로 콜렉터를 정의한다.
 # mode: sidecar 면 파드에 annotation 을 붙여 콜렉터를 주입한다:
 #   sidecar.opentelemetry.io/inject: "true"
+#
+# ★ 주입 확인은 `.spec.containers` 가 아니라 **READY 숫자**로 본다(실검증).
+#   otc-container 도 네이티브 사이드카(initContainers)로 들어가서
+#   `kubectl get pod -o jsonpath='{.spec.containers[*].name}'` 에는 안 보인다.
+#   `kubectl get pod sidecar-test` → READY 3/3 (앱 + istio-proxy + otc-container) 로 확인했다.
+#   `kubectl get pod -o jsonpath='{.spec.initContainers[*].name}'` 로도 볼 수 있다.
 apiVersion: opentelemetry.io/v1beta1
 kind: OpenTelemetryCollector
 metadata:
