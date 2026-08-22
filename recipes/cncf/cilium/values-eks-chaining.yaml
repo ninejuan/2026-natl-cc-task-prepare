@@ -1,7 +1,16 @@
 # helm upgrade --install cilium cilium/cilium --version 1.19.5 -n kube-system -f values-eks-chaining.yaml
 #
 # VPC CNI 를 그대로 두고 Cilium 을 정책 엔진 + 관측 도구로만 얹는다.
-# aws-node 를 건드리지 않으므로 되돌리기 쉽다.
+#
+# ★★★ 경고: 이 값으로 EKS 1.35 + Cilium 1.20.1 에 설치했더니 **파드 egress 가 전멸했다**(실검증).
+#   CoreDNS 가 VPC 리졸버(x.x.0.2:53)로 못 나가서 0/1 무한 재시작.
+#   endpointRoutes.enabled / ipam.mode=delegated-plugin 을 추가해도 복구되지 않았다.
+#   더 나쁜 건 제거해도 노드에 05-cilium.conflist 가 남아 **새 파드가 아예 안 뜬다**는 점이다.
+#   상세한 증상·응급 복구·대안은 README.md 의 "🚨 실검증 결과" 절을 먼저 읽어라.
+#   → 대회에서는 VPC CNI 내장 정책 / Calico policy-only / Istio AuthorizationPolicy 를 쓴다.
+#
+# "되돌리기 쉽다" 는 말은 **사실이 아니었다.** 아래 값은 과제지가 Cilium 을 명시했을 때의 출발점일 뿐이고,
+# 반드시 검증용 클러스터에서 먼저 확인한 뒤 본 클러스터에 적용하라.
 
 cni:
   chainingMode: aws-cni
