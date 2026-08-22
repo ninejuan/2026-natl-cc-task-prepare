@@ -45,6 +45,9 @@ VPC Lattice · Network Firewall · RDS Connection · Client VPN · Storage prote
 
 직종설명서가 허용한 17개 프로젝트. 전체 목록·선택 기준은 [`cncf/README.md`](recipes/cncf/README.md).
 
+**17개 전부 EKS 1.35 실클러스터에서 설치·동작 확인 완료** (2026-08-22, `verify/RESULTS.md` 참조).
+각 디렉토리의 `★` 주석은 전부 실제로 당해본 함정이다 — 막히면 그것부터 읽어라.
+
 | 문구 키워드 | 위치 |
 |---|---|
 | SQS 큐 길이로 스케일, cron 스케일, 이벤트 기반 증설 | [`cncf/keda/`](recipes/cncf/keda/) |
