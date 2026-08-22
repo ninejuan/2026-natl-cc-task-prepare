@@ -1,7 +1,16 @@
 # helm upgrade --install loki grafana/loki -n monitoring --create-namespace -f values-loki-monolithic-s3.yaml
 # 버킷 이름과 role ARN 을 바꿔서 쓴다.
 
-deploymentMode: Monolithic     # 차트 12.0.0+ 이름. 그 이전은 SingleBinary
+# ★★★ deploymentMode 에 **`Monolithic` 같은 없는 값을 쓰면 조용히 아무것도 안 뜬다**(실검증).
+#   helm 이 오류를 내지 않고 통과시키는데, 실제로는 loki 파드가 하나도 안 만들어지고
+#   `loki-gateway` 만 뜬다. "설치 성공" 메시지까지 정상으로 보여서 알아채기 어렵다.
+#   차트 7.3.0 기준 허용값은 세 개뿐이다:
+#     SingleBinary    — 1개 바이너리. 대회에선 이걸 쓴다
+#     SimpleScalable  — read/write/backend 3종. **오브젝트 스토리지 필수**
+#     Distributed     — 마이크로서비스 전개
+#   확인: helm show values grafana/loki | grep -A10 'Deployment mode'
+#         kubectl -n monitoring get sts,deploy | grep loki    ← loki-0 이 있어야 한다
+deploymentMode: SingleBinary
 
 loki:
   auth_enabled: false          # 멀티테넌시 끔. 켜면 모든 요청에 X-Scope-OrgID 헤더가 필요하다
