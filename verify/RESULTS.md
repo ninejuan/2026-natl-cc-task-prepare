@@ -662,11 +662,38 @@ recipes/aws/     케이스 95개 중 95 실계정 확인   ← 100%
 21. **calico** helm 설치 전 `operator-crds.yaml` 선행 필요 / `destination.ports` 는 컨테이너 포트 /
     삭제는 apiserver·goldmane·whisker → installation 순서
 
-## ❌ cilium — 검증 실패를 그대로 남긴다
+## cilium — 한 번 실패했다가 원인을 찾아 정정
 
-공식 문서 그대로의 값(`cni.chainingMode=aws-cni`, `cni.exclusive=false`,
-`enableIPv4Masquerade=false`, `routingMode=native`)으로 설치했더니 **파드 egress 가 전멸**했다.
-CoreDNS 가 VPC 리졸버로 못 나가 `0/1` 무한 재시작, 파드 안에서 `apk add` 조차 실패.
-`endpointRoutes.enabled`, `ipam.mode=delegated-plugin`, `--local-router-ipv4` 를 더해도 그대로.
-게다가 `helm uninstall` 후에도 노드의 `05-cilium.conflist` 가 남아 **새 파드가 아예 안 뜬다**.
-→ 카드에 증상·응급 복구(hostNetwork DaemonSet)·대안을 적고 **대회 중 설치 금지**로 표기했다.
+처음엔 **Calico 를 깔았다 지운 노드 위에** Cilium 을 얹었고, 파드 egress 가 전멸했다
+(CoreDNS 가 VPC 리졸버로 i/o timeout, 파드 안에서 `apk add` 조차 실패).
+`endpointRoutes.enabled`, `ipam.mode=delegated-plugin`, `--local-router-ipv4` 를 더해도 그대로였다.
+
+**노드그룹을 새로 만들어 옛 노드를 버리자 같은 값으로 곧바로 정상 동작했다.**
+원인은 Cilium 이 아니라 **이전 CNI 정책 엔진이 노드에 남긴 잔재**였다.
+
+정정 후 확인한 것:
+
+| 정책 | 결과 |
+|---|---|
+| L3/L4 | frontend 200 / 그 외 타임아웃 (3회 반복 동일) |
+| L7 HTTP | `GET /health` 10/10 200, `GET /v1/book/` 10/10 200, `GET /admin/` 5/5 403, `DELETE` 403 |
+| FQDN | matchName 307, `google.com` 타임아웃, `cilium-dbg fqdn cache list` 에 lookup/connection 기록 |
+| Clusterwide | 내부 200 / 외부 타임아웃 / 삭제 시 즉시 복구 |
+
+여기서 새로 확정한 함정:
+
+22. **CNI 정책 엔진을 바꿀 때는 노드를 교체한다.** `helm uninstall` 로는 노드가 안 깨끗해진다.
+23. **`helm uninstall cilium` 후 `05-cilium.conflist` 잔존** → 새 파드가 아예 안 뜬다
+    (`plugin type="cilium-cni" failed`, `cilium.sock` 없음). CNI 가 죽어 복구 파드도 못 띄우므로
+    **hostNetwork 특권 DaemonSet** 으로 파일을 지우고, 확실히 하려면 노드를 교체한다.
+24. **Cilium `matchPattern` 의 `*` 는 점을 넘지 않는다.**
+    `*.amazonaws.com` 은 `s3.ap-northeast-1.amazonaws.com` 를 매칭하지 않는다 → `*.*.amazonaws.com`.
+25. **NetworkPolicy 계열의 포트는 전부 컨테이너 포트**다(표준/Calico/Cilium 공통).
+    Service 포트를 적으면 허용하려던 트래픽까지 전부 막힌다.
+26. **L7 정책에서 200/503 이 섞이면 정책이 아니라 Service 엔드포인트를 의심**하라.
+    서버가 아닌 파드가 같은 라벨을 달고 있으면 절반이 503 이 된다(실측 후 라벨 제거 → 10/10 200).
+
+## 검증에 쓴 임시 리소스
+
+`skills-eks`(ap-northeast-2) / `skills-cni`(ap-northeast-1) 두 클러스터와 부속 IAM/SQS/Secrets/
+로그그룹은 검증 종료 후 정리한다. 정리 여부는 아래 "정리" 절에 기록한다.
