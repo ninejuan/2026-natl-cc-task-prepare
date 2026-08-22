@@ -1,5 +1,16 @@
 # 표준 NetworkPolicy 와 다른 리소스다. kubectl get networkpolicies.projectcalico.org 로 봐야 보인다.
 # order 와 Log 액션이 표준 정책에는 없는 기능이다.
+#
+# ★★★ destination.ports 는 **컨테이너 포트**다. Service 포트가 아니다(실검증).
+#   Service 가 `port: 8080 → targetPort: 80` 이면 여기에는 **80** 을 적어야 한다.
+#   8080 을 적으면 허용 규칙이 아무것도 매칭하지 않아 **허용하려던 트래픽까지 전부 막힌다.**
+#   실검증: targetPort 80 인 서비스에 대해
+#     ports: [80]   → frontend 200 / other 000  (의도대로)
+#     ports: [8080] → frontend 000 / other 000  (전부 차단)
+#   확인: kubectl -n app get pod -o jsonpath='{.items[0].spec.containers[0].ports}'
+#
+# ★ 확인은 서비스 이름으로 curl 하되, 정책은 파드 포트 기준으로 쓴다는 점을 항상 분리해서 생각하라.
+#   같은 함정이 표준 NetworkPolicy(../../k8s/netpol/)에도 그대로 있다.
 apiVersion: projectcalico.org/v3
 kind: NetworkPolicy
 metadata:

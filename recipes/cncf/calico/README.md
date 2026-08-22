@@ -36,19 +36,31 @@ kubectl -n kube-system delete pod -l k8s-app=aws-node
 Tigera Operator 를 쓰되 `cni.type: AmazonVPC` 로 지정해 IP 할당은 VPC CNI 에 맡긴다. 이게 EKS 에서 안전한 조합이다.
 
 ```bash
-kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/v3.31.0/manifests/tigera-operator.yaml
+CV=v3.32.1
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/${CV}/manifests/tigera-operator.yaml
 kubectl apply -f installation-policy-only.yaml
 kubectl -n calico-system get pods
 ```
 
-Helm 으로:
+Helm 으로 — **CRD 를 먼저 넣어야 한다**:
 
 ```bash
+CV=v3.32.1
+# ★★ 이 줄을 빼면 helm install 이 반드시 실패한다(실검증):
+#      no matches for kind "Installation" in version "operator.tigera.io/v1"
+#      no matches for kind "Whisker"      in version "operator.tigera.io/v1"
+#      ensure CRDs are installed first
+#    차트가 Installation/Whisker CR 을 CRD 와 같은 패스에 넣어서 순서가 꼬인다.
+kubectl create -f https://raw.githubusercontent.com/projectcalico/calico/${CV}/manifests/operator-crds.yaml
+
 helm repo add projectcalico https://docs.tigera.io/calico/charts && helm repo update
 helm upgrade --install calico projectcalico/tigera-operator \
-  -n tigera-operator --create-namespace --version v3.31.0 \
+  -n tigera-operator --create-namespace --version ${CV} \
   -f values-policy-only.yaml --wait
 ```
+
+실검증 소요: Installation `Ready=True` 까지 약 75초, calico-system 파드 8개
+(apiserver 2 / kube-controllers 1 / node = 노드 수 / typha 1 / csi-node = 노드 수).
 
 ## 파일
 
@@ -80,10 +92,23 @@ kubectl get installation default -o jsonpath='{.spec.cni.type}{"\n"}'      # Ama
 kubectl get networkpolicies.projectcalico.org -A
 kubectl get globalnetworkpolicies.projectcalico.org
 
-# 정책이 실제로 막는지
-kubectl run probe --rm -it -n app --image=curlimages/curl --restart=Never -- \
-  curl -s -m 5 -o /dev/null -w '%{http_code}\n' http://app-svc:8080/health
+# 정책이 실제로 막는지 (ECR Public 만 쓰는 버전)
+kubectl run probe --rm -it -n app --restart=Never \
+  --image=public.ecr.aws/docker/library/alpine:3.21 -- \
+  sh -c 'apk add --no-cache curl >/dev/null 2>&1; curl -s -m 5 -o /dev/null -w "%{http_code}\n" http://app-svc:8080/'
 ```
+
+실검증 결과(정책 적용 전/후):
+
+| 상태 | frontend 라벨 파드 | 다른 파드 |
+|---|---|---|
+| 정책 없음 | 200 | 200 |
+| `allow-frontend` (ports 를 컨테이너 포트로) | 200 | 000 (타임아웃) |
+| `allow-frontend` (ports 를 Service 포트로 — 오답) | 000 | 000 |
+| `default-deny` GlobalNetworkPolicy 추가 | 000 | 000, DNS 는 계속 OK |
+
+`GlobalNetworkPolicy` 의 `destination.selector` 는 **전역**이라 DNS 허용 규칙에
+`namespaceSelector` 를 따로 안 붙여도 kube-system 의 CoreDNS 에 매칭된다(실검증).
 
 `kubectl get networkpolicy` (표준) 와 `kubectl get networkpolicies.projectcalico.org` (Calico) 는 **다른 리소스**다. 헷갈리면 정책이 없다고 착각한다.
 
